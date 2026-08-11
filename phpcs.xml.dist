@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<ruleset name="Blogging Live">
+	<description>WordPress coding standards for the Blogging Live plugin.</description>
+	<file>blogging-live.php</file>
+	<file>src</file>
+	<file>templates</file>
+	<file>blocks</file>
+	<exclude-pattern>vendor/*</exclude-pattern>
+	<arg name="extensions" value="php" />
+	<arg value="sp" />
+	<rule ref="WordPress">
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase" />
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName" />
+		<exclude name="Universal.Arrays.DisallowShortArraySyntax" />
+		<exclude name="Squiz.Commenting.ClassComment.Missing" />
+		<exclude name="Squiz.Commenting.FunctionComment.Missing" />
+		<exclude name="Squiz.Commenting.FunctionComment.MissingParamTag" />
+		<exclude name="Squiz.Commenting.FunctionComment.IncorrectTypeHint" />
+		<exclude name="Squiz.Commenting.FunctionComment.ParamNameNoMatch" />
+		<exclude name="Squiz.Commenting.VariableComment.Missing" />
+		<exclude name="Generic.Commenting.DocComment.MissingShort" />
+	</rule>
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="BloggingLive" />
+				<element value="blogging_live" />
+				<element value="BLOGGING_LIVE" />
+			</property>
+		</properties>
+		<exclude-pattern>templates/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array">
+				<element value="create_blogging_lives" />
+			</property>
+		</properties>
+	</rule>
+</ruleset>

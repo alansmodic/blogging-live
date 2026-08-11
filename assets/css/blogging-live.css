@@ -1,0 +1,135 @@
+.blogging-live {
+	--blogging-live-accent: #c1121f;
+	--blogging-live-border: #dcdcde;
+	--blogging-live-muted: #646970;
+	border-top: 4px solid var(--blogging-live-accent);
+	margin-block: 2rem;
+}
+
+.blogging-live__header {
+	align-items: center;
+	display: flex;
+	gap: 1rem;
+	justify-content: space-between;
+	padding-block: 1rem;
+}
+
+.blogging-live__eyebrow {
+	color: var(--blogging-live-accent);
+	font-size: .75rem;
+	font-weight: 700;
+	letter-spacing: .08em;
+	margin: 0 0 .25rem;
+	text-transform: uppercase;
+}
+
+.blogging-live__title {
+	font-size: clamp(1.4rem, 4vw, 2rem);
+	margin: 0;
+}
+
+.blogging-live__status,
+.blogging-live-entry__badge {
+	background: #f0f0f1;
+	border-radius: 999px;
+	font-size: .75rem;
+	font-weight: 700;
+	padding: .35rem .65rem;
+	text-transform: uppercase;
+}
+
+.blogging-live--live .blogging-live__status {
+	background: var(--blogging-live-accent);
+	color: #fff;
+}
+
+.blogging-live__entries {
+	display: grid;
+	gap: 1rem;
+}
+
+.blogging-live-entry {
+	border: 1px solid var(--blogging-live-border);
+	border-radius: .25rem;
+	padding: clamp(1rem, 3vw, 1.5rem);
+}
+
+.blogging-live-entry--pinned {
+	background: #f6f7f7;
+}
+
+.blogging-live-entry--key-event {
+	border-left: 4px solid var(--blogging-live-accent);
+}
+
+.blogging-live-entry__meta {
+	align-items: center;
+	color: var(--blogging-live-muted);
+	display: flex;
+	flex-wrap: wrap;
+	font-size: .875rem;
+	gap: .5rem;
+}
+
+.blogging-live-entry__title {
+	font-size: 1.25rem;
+	margin: .75rem 0 .35rem;
+}
+
+.blogging-live-entry__authors {
+	color: var(--blogging-live-muted);
+	font-size: .875rem;
+	margin: .35rem 0 0;
+}
+
+.blogging-live-entry__content {
+	margin-top: 1rem;
+}
+
+.blogging-live-entry__content > :last-child {
+	margin-bottom: 0;
+}
+
+.blogging-live__new-updates,
+.blogging-live__load-older {
+	background: var(--blogging-live-accent);
+	border: 0;
+	border-radius: .2rem;
+	color: #fff;
+	cursor: pointer;
+	font: inherit;
+	font-weight: 700;
+	margin-block: 1rem;
+	padding: .7rem 1rem;
+}
+
+.blogging-live__load-older {
+	background: transparent;
+	border: 1px solid currentColor;
+	color: inherit;
+}
+
+.blogging-live button[hidden] {
+	display: none;
+}
+
+.blogging-live button:focus-visible {
+	outline: 3px solid currentColor;
+	outline-offset: 3px;
+}
+
+.blogging-live__message,
+.blogging-live__empty {
+	color: var(--blogging-live-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.blogging-live-entry--new {
+		animation: blogging-live-highlight 2s ease-out;
+	}
+}
+
+@keyframes blogging-live-highlight {
+	from { background: #fff4c2; }
+	to { background: transparent; }
+}

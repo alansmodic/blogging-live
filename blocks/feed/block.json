@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "blogging-live/feed",
+  "version": "1.0.0",
+  "title": "Blogging Live",
+  "category": "widgets",
+  "icon": "megaphone",
+  "description": "Display the liveblog connected to this post or a specific liveblog.",
+  "textdomain": "blogging-live",
+  "usesContext": ["postId", "postType"],
+  "attributes": {
+    "bloggingLiveId": {
+      "type": "integer",
+      "default": 0
+    },
+    "showHeader": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "supports": {
+    "html": false,
+    "align": ["wide", "full"]
+  }
+}
