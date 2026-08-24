@@ -81,10 +81,13 @@ final class Plugin {
 		PostTypes::register_post_types();
 		Capabilities::add_roles_caps();
 		Settings::add_defaults();
-		flush_rewrite_rules();
+		// Activation only, and required for self-hosted installs; on VIP this is
+		// a no-op because activation hooks do not fire and rewrite rules are
+		// flushed automatically on deploy.
+		flush_rewrite_rules(); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules
 	}
 
 	public static function deactivate(): void {
-		flush_rewrite_rules();
+		flush_rewrite_rules(); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules -- Deactivation only; see activate().
 	}
 }

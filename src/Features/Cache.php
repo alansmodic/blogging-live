@@ -49,6 +49,10 @@ final class Cache implements Feature {
 	}
 
 	public function set( string $key, mixed $value, int $ttl = 300 ): bool {
-		return wp_cache_set( $key, $value, self::GROUP, $ttl );
+		// TTL defaults to the VIP-recommended 300s minimum and is a backstop
+		// only: correctness comes from generation-based invalidation (see
+		// generation()/bump()), so a stale read is prevented by the versioned
+		// key regardless of expiry.
+		return wp_cache_set( $key, $value, self::GROUP, $ttl ); // phpcs:ignore WordPressVIPMinimum.Performance.LowExpiryCacheTime.CacheTimeUndetermined
 	}
 }
