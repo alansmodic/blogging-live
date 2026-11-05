@@ -15,6 +15,10 @@ if ( ! file_exists( $tests_dir . '/includes/functions.php' ) ) {
 	exit( 1 );
 }
 
+if ( ! defined( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH' ) ) {
+	define( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH', dirname( __DIR__ ) . '/vendor/yoast/phpunit-polyfills' );
+}
+
 require_once $tests_dir . '/includes/functions.php';
 
 tests_add_filter(
@@ -25,3 +29,4 @@ tests_add_filter(
 );
 
 require $tests_dir . '/includes/bootstrap.php';
+require __DIR__ . '/TestCase.php';

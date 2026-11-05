@@ -15,9 +15,19 @@ defined( 'ABSPATH' ) || exit;
 
 final class EntryPresenter {
 	/**
+	 * Rendered content keyed by entry ID and modified time, so an entry shown in
+	 * several places on one page runs through the_content once.
+	 *
+	 * @var array<string, string>
+	 */
+	private array $rendered = [];
+
+	/**
+	 * @param bool $render_content Whether to run the content through the_content. When false,
+	 *                             content.rendered is empty and content.text holds plain text.
 	 * @return array<string, mixed>
 	 */
-	public function present( WP_Post $entry ): array {
+	public function present( WP_Post $entry, bool $render_content = true ): array {
 		$blogging_live_id = absint( $entry->post_parent );
 		$blogging_live    = get_post( $blogging_live_id );
 		$host_id          = $blogging_live instanceof WP_Post ? absint( $blogging_live->post_parent ) : 0;
@@ -42,17 +52,7 @@ final class EntryPresenter {
 			];
 		}
 
-		global $post;
-		$original_post = $post;
-		$post          = $entry; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
-		setup_postdata( $entry );
-		$rendered_content = apply_filters( 'the_content', $entry->post_content ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applies the core content pipeline to entry blocks.
-		$post             = $original_post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
-		if ( $original_post instanceof WP_Post ) {
-			setup_postdata( $original_post );
-		} else {
-			wp_reset_postdata();
-		}
+		$rendered_content = $render_content ? $this->render_content( $entry ) : '';
 
 		$published_time      = strtotime( $entry->post_date_gmt . ' UTC' );
 		$modified_time       = strtotime( $entry->post_modified_gmt . ' UTC' );
@@ -65,8 +65,8 @@ final class EntryPresenter {
 			'host_id'          => $host_id,
 			'title'            => get_the_title( $entry ),
 			'content'          => [
-				'raw'      => $entry->post_content,
 				'rendered' => $rendered_content,
+				'text'     => $render_content ? '' : $this->plain_text( $entry ),
 			],
 			'published_gmt'    => $published_timestamp ? gmdate( 'c', $published_timestamp ) : '',
 			'modified_gmt'     => $modified_timestamp ? gmdate( 'c', $modified_timestamp ) : '',
@@ -84,5 +84,38 @@ final class EntryPresenter {
 		 * @param WP_Post              $entry Entry post.
 		 */
 		return apply_filters( 'blogging_live_entry_data', $data, $entry );
+	}
+
+	private function render_content( WP_Post $entry ): string {
+		$key = $entry->ID . ':' . $entry->post_modified_gmt;
+
+		if ( isset( $this->rendered[ $key ] ) ) {
+			return $this->rendered[ $key ];
+		}
+
+		global $post;
+		$original_post = $post;
+		$post          = $entry; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+		setup_postdata( $entry );
+		$rendered = (string) apply_filters( 'the_content', $entry->post_content ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applies the core content pipeline to entry blocks.
+		$post     = $original_post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+		if ( $original_post instanceof WP_Post ) {
+			setup_postdata( $original_post );
+		} else {
+			wp_reset_postdata();
+		}
+
+		$this->rendered[ $key ] = $rendered;
+
+		return $rendered;
+	}
+
+	/**
+	 * Plain text for contexts such as structured data, without running the_content
+	 * filters that themes and plugins use to inject ads, sharing links, and markup.
+	 */
+	private function plain_text( WP_Post $entry ): string {
+		$text = excerpt_remove_blocks( strip_shortcodes( $entry->post_content ) );
+		return trim( (string) preg_replace( '/\s+/', ' ', wp_strip_all_tags( $text ) ) );
 	}
 }

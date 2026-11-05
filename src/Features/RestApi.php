@@ -9,11 +9,9 @@ declare(strict_types=1);
 
 namespace BloggingLive\Features;
 
-use BloggingLive\EntryPresenter;
 use BloggingLive\Feature;
 use BloggingLive\Repositories\EntryRepository;
 use BloggingLive\Repositories\BloggingLiveRepository;
-use BloggingLive\Templates\TemplateLoader;
 use WP_Error;
 use WP_Post;
 use WP_REST_Request;
@@ -28,8 +26,7 @@ final class RestApi implements Feature {
 	public function __construct(
 		private readonly BloggingLiveRepository $blogging_lives,
 		private readonly EntryRepository $entries,
-		private readonly TemplateLoader $templates,
-		private readonly EntryPresenter $presenter
+		private readonly Frontend $frontend
 	) {}
 
 	public function register(): void {
@@ -82,6 +79,16 @@ final class RestApi implements Feature {
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
 					],
+					'since'    => [
+						'description'       => __( 'GMT time (Y-m-d H:i:s) from a previous response; adds entries edited or removed since then.', 'blogging-live' ),
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+					'pinned'   => [
+						'description' => __( 'Return only pinned entries.', 'blogging-live' ),
+						'type'        => 'boolean',
+						'default'     => false,
+					],
 				],
 			]
 		);
@@ -106,14 +113,14 @@ final class RestApi implements Feature {
 
 	public function can_read_blogging_live( WP_REST_Request $request ): bool {
 		$blogging_live_id = absint( $request['id'] );
-		return $this->blogging_lives->is_public( $blogging_live_id ) || current_user_can( 'read_post', $blogging_live_id );
+		return null !== $this->blogging_lives->find( $blogging_live_id ) && $this->blogging_lives->can_view( $blogging_live_id );
 	}
 
 	public function get_for_post( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$post_id       = absint( $request['post_id'] );
 		$blogging_live = $this->blogging_lives->find_for_host( $post_id );
 
-		if ( ! $blogging_live || ( ! $this->blogging_lives->is_public( $blogging_live->ID ) && ! current_user_can( 'read_post', $blogging_live->ID ) ) ) {
+		if ( ! $blogging_live || ! $this->blogging_lives->can_view( $blogging_live->ID ) ) {
 			return new WP_Error( 'blogging_live_not_found', __( 'No public Blogging Live was found for this post.', 'blogging-live' ), [ 'status' => 404 ] );
 		}
 
@@ -136,40 +143,53 @@ final class RestApi implements Feature {
 
 		$before = (string) $request->get_param( 'before' );
 		$after  = (string) $request->get_param( 'after' );
+		$since  = (string) $request->get_param( 'since' );
 		if ( ! $this->entries->is_valid_cursor( $before ) || ! $this->entries->is_valid_cursor( $after ) ) {
 			return new WP_Error( 'blogging_live_invalid_cursor', __( 'The supplied Blogging Live cursor is invalid.', 'blogging-live' ), [ 'status' => 400 ] );
 		}
+		if ( '' !== $since && ! $this->entries->is_valid_gmt( $since ) ) {
+			return new WP_Error( 'blogging_live_invalid_since', __( 'The since parameter must be a GMT time in Y-m-d H:i:s format.', 'blogging-live' ), [ 'status' => 400 ] );
+		}
 
+		$server_time      = gmdate( 'Y-m-d H:i:s' );
 		$blogging_live_id = absint( $request['id'] );
+		$status           = $this->blogging_lives->status( $blogging_live_id );
 		$feed             = $this->entries->feed(
 			$blogging_live_id,
 			[
-				'per_page' => absint( $request->get_param( 'per_page' ) ),
-				'before'   => $before,
-				'after'    => $after,
+				'per_page'    => absint( $request->get_param( 'per_page' ) ),
+				'before'      => $before,
+				'after'       => $after,
+				'pinned_only' => (bool) $request->get_param( 'pinned' ),
 			]
 		);
-		$items            = [];
 
-		foreach ( $feed['entries'] as $entry ) {
-			$data           = $this->presenter->present( $entry );
-			$data['cursor'] = $this->entries->cursor( $entry );
-			$data['html']   = $this->templates->render( 'entry', [ 'entry' => $data ] );
-			$items[]        = $data;
-		}
-
-		$newest   = $this->newest_entry( $feed['entries'] );
-		$oldest   = $this->oldest_entry( $feed['entries'] );
-		$data     = [
+		$newest = $this->newest_entry( $feed['entries'] );
+		$oldest = $this->oldest_entry( $feed['entries'] );
+		$data   = [
 			'blogging_live_id' => $blogging_live_id,
-			'entries'          => $items,
+			'status'           => $status,
+			'status_label'     => BloggingLiveRepository::status_labels()[ $status ],
+			'server_time'      => $server_time,
+			'entries'          => array_map( [ $this->frontend, 'entry_payload' ], $feed['entries'] ),
 			'has_more'         => $feed['has_more'],
 			'order'            => strtolower( $feed['order'] ),
 			'newest_cursor'    => $newest ? $this->entries->cursor( $newest ) : '',
 			'oldest_cursor'    => $oldest ? $this->entries->cursor( $oldest ) : '',
 		];
+
+		if ( '' !== $since ) {
+			$new_ids         = wp_list_pluck( $feed['entries'], 'ID' );
+			$updated         = array_filter(
+				$this->entries->modified_since( $blogging_live_id, $since ),
+				static fn( WP_Post $entry ): bool => ! in_array( $entry->ID, $new_ids, true )
+			);
+			$data['updated'] = array_map( [ $this->frontend, 'entry_payload' ], array_values( $updated ) );
+			$data['removed'] = $this->entries->removed_since( $blogging_live_id, $since );
+		}
+
 		$response = new WP_REST_Response( $data );
-		$etag     = '"' . md5( (string) wp_json_encode( $data ) ) . '"';
+		$etag     = '"' . md5( (string) wp_json_encode( array_diff_key( $data, [ 'server_time' => true ] ) ) ) . '"';
 
 		if ( $request->get_header( 'if-none-match' ) === $etag ) {
 			$response->set_status( 304 );
@@ -184,13 +204,14 @@ final class RestApi implements Feature {
 
 	private function blogging_live_response( WP_Post $blogging_live ): WP_REST_Response {
 		$host_id  = $this->blogging_lives->host_id( $blogging_live->ID );
-		$status   = (string) get_post_meta( $blogging_live->ID, '_blogging_live_status', true );
+		$status   = $this->blogging_lives->status( $blogging_live->ID );
 		$response = new WP_REST_Response(
 			[
 				'id'                 => $blogging_live->ID,
 				'host_id'            => $host_id,
 				'title'              => get_the_title( $blogging_live ),
-				'status'             => $status ? $status : 'scheduled',
+				'status'             => $status,
+				'status_label'       => BloggingLiveRepository::status_labels()[ $status ],
 				'coverage_start_gmt' => (string) get_post_meta( $blogging_live->ID, '_blogging_live_start_gmt', true ),
 				'coverage_end_gmt'   => (string) get_post_meta( $blogging_live->ID, '_blogging_live_end_gmt', true ),
 				'last_updated_gmt'   => (string) get_post_meta( $blogging_live->ID, '_blogging_live_last_updated_gmt', true ),

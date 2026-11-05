@@ -6,13 +6,16 @@
  *
  * @package BloggingLive
  *
- * @var array<string, mixed> $data Template data.
+ * @var array<string, mixed> $data Template data: 'entry' and 'context' ('feed' or 'pinned').
  */
 
 defined( 'ABSPATH' ) || exit;
 
 $entry   = $data['entry'];
+$context = $data['context'] ?? 'feed';
 $classes = [ 'blogging-live-entry' ];
+// The pinned section repeats entries from the feed, so its copies need distinct IDs.
+$dom_id = ( 'pinned' === $context ? 'blogging-live-pinned-' : 'blogging-live-entry-' ) . $entry['id'];
 
 if ( $entry['is_pinned'] ) {
 	$classes[] = 'blogging-live-entry--pinned';
@@ -22,7 +25,7 @@ if ( $entry['is_key_event'] ) {
 }
 ?>
 <article
-	id="blogging-live-entry-<?php echo esc_attr( (string) $entry['id'] ); ?>"
+	id="<?php echo esc_attr( $dom_id ); ?>"
 	class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>"
 	data-entry-id="<?php echo esc_attr( (string) $entry['id'] ); ?>"
 >

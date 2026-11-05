@@ -19,6 +19,10 @@ use WP_Query;
 defined( 'ABSPATH' ) || exit;
 
 final class EntryRepository {
+	public const REMOVED_META = '_blogging_live_removed';
+
+	private const REMOVED_LIMIT = 100;
+
 	public function __construct( private readonly Cache $cache ) {}
 
 	/**
@@ -58,11 +62,6 @@ final class EntryRepository {
 			'post_parent'            => $blogging_live_id,
 			'post_status'            => 'publish',
 			'posts_per_page'         => $per_page + 1,
-			'orderby'                => [
-				'date' => $order,
-				'ID'   => $order,
-			],
-			'order'                  => $order,
 			'ignore_sticky_posts'    => true,
 			'no_found_rows'          => true,
 			'update_post_term_cache' => false,
@@ -70,7 +69,7 @@ final class EntryRepository {
 		];
 
 		if ( $pinned ) {
-			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Optional, bounded child-entry query.
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Bounded by post_parent; results are object-cached.
 			$query_args['meta_query'] = [
 				[
 					'key'     => '_blogging_live_is_pinned',
@@ -80,32 +79,7 @@ final class EntryRepository {
 			];
 		}
 
-		$cursor = $before ? $before : $after;
-		$where  = null;
-
-		if ( $cursor ) {
-			$operator = $before ? '<' : '>';
-			$where    = static function ( string $sql ) use ( $cursor, $operator ): string {
-				global $wpdb;
-
-				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Operator is constrained to < or > above.
-				$cursor_sql = $wpdb->prepare(
-					" AND ( {$wpdb->posts}.post_date_gmt {$operator} %s OR ( {$wpdb->posts}.post_date_gmt = %s AND {$wpdb->posts}.ID {$operator} %d ) )",
-					$cursor['date'],
-					$cursor['date'],
-					$cursor['id']
-				);
-				// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				return $sql . $cursor_sql;
-			};
-			add_filter( 'posts_where', $where );
-		}
-
-		$query = new WP_Query( $query_args );
-
-		if ( $where ) {
-			remove_filter( 'posts_where', $where );
-		}
+		$query = $this->query( $query_args, $order, $before ? $before : $after, $before ? '<' : '>' );
 
 		$posts    = array_values( array_filter( $query->posts, static fn( mixed $post ): bool => $post instanceof WP_Post ) );
 		$has_more = count( $posts ) > $per_page;
@@ -127,9 +101,90 @@ final class EntryRepository {
 		];
 	}
 
-	public function latest( int $blogging_live_id ): ?WP_Post {
-		$result = $this->feed( $blogging_live_id, [ 'per_page' => 1 ] );
-		return $result['entries'][0] ?? null;
+	/**
+	 * Published entries edited at or after a GMT time, most recent edit first.
+	 *
+	 * @return WP_Post[]
+	 */
+	public function modified_since( int $blogging_live_id, string $since_gmt, int $limit = 50 ): array {
+		$limit     = max( 1, min( 50, $limit ) );
+		$cache_key = sprintf( 'modified:%d:%d:%s:%d', $blogging_live_id, $this->cache->generation( $blogging_live_id ), md5( $since_gmt ), $limit );
+		$found     = false;
+		$cached    = $this->cache->get( $cache_key, $found );
+
+		if ( $found && is_array( $cached ) ) {
+			return array_values( array_filter( array_map( 'get_post', $cached ) ) );
+		}
+
+		$query = new WP_Query(
+			[
+				'post_type'              => PostTypes::ENTRY_POST_TYPE,
+				'post_parent'            => $blogging_live_id,
+				'post_status'            => 'publish',
+				'posts_per_page'         => $limit,
+				'orderby'                => 'modified',
+				'order'                  => 'DESC',
+				'date_query'             => [
+					[
+						'column'    => 'post_modified_gmt',
+						'after'     => $since_gmt,
+						'inclusive' => true,
+					],
+				],
+				'ignore_sticky_posts'    => true,
+				'no_found_rows'          => true,
+				'update_post_term_cache' => false,
+				'suppress_filters'       => false,
+			]
+		);
+
+		$posts = array_values( array_filter( $query->posts, static fn( mixed $post ): bool => $post instanceof WP_Post ) );
+		$this->cache->set( $cache_key, wp_list_pluck( $posts, 'ID' ) );
+
+		return $posts;
+	}
+
+	/**
+	 * IDs of entries that left the public feed at or after a GMT time.
+	 *
+	 * @return int[]
+	 */
+	public function removed_since( int $blogging_live_id, string $since_gmt ): array {
+		$since   = strtotime( $since_gmt . ' UTC' );
+		$removed = get_post_meta( $blogging_live_id, self::REMOVED_META, true );
+
+		if ( ! $since || ! is_array( $removed ) ) {
+			return [];
+		}
+
+		return array_map( 'absint', array_keys( array_filter( $removed, static fn( mixed $time ): bool => (int) $time >= $since ) ) );
+	}
+
+	/**
+	 * Record that an entry left the public feed so polling readers can remove it.
+	 */
+	public function record_removal( int $blogging_live_id, int $entry_id ): void {
+		$removed = get_post_meta( $blogging_live_id, self::REMOVED_META, true );
+		$removed = is_array( $removed ) ? $removed : [];
+
+		unset( $removed[ $entry_id ] );
+		$removed[ $entry_id ] = time();
+
+		update_post_meta( $blogging_live_id, self::REMOVED_META, array_slice( $removed, -self::REMOVED_LIMIT, null, true ) );
+	}
+
+	public function forget_removal( int $blogging_live_id, int $entry_id ): void {
+		$removed = get_post_meta( $blogging_live_id, self::REMOVED_META, true );
+
+		if ( is_array( $removed ) && isset( $removed[ $entry_id ] ) ) {
+			unset( $removed[ $entry_id ] );
+			update_post_meta( $blogging_live_id, self::REMOVED_META, $removed );
+		}
+	}
+
+	public function is_valid_gmt( string $value ): bool {
+		$parsed = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', $value, new DateTimeZone( 'UTC' ) );
+		return $parsed && $parsed->format( 'Y-m-d H:i:s' ) === $value;
 	}
 
 	public function cursor( WP_Post $entry ): string {
@@ -160,9 +215,8 @@ final class EntryRepository {
 		}
 
 		[ $date, $id ] = explode( '|', $decoded, 2 );
-		$parsed        = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', $date, new DateTimeZone( 'UTC' ) );
 
-		if ( ! $parsed || $parsed->format( 'Y-m-d H:i:s' ) !== $date || ! ctype_digit( $id ) ) {
+		if ( ! $this->is_valid_gmt( $date ) || ! ctype_digit( $id ) ) {
 			return null;
 		}
 
@@ -170,5 +224,47 @@ final class EntryRepository {
 			'date' => $date,
 			'id'   => absint( $id ),
 		];
+	}
+
+	/**
+	 * Run an entry query ordered by GMT publish time and ID, optionally after a cursor.
+	 *
+	 * Ordering by post_date_gmt keeps the order consistent with the cursor across
+	 * daylight-saving changes, which post_date (local time) does not.
+	 *
+	 * @param array<string, mixed>              $query_args WP_Query arguments.
+	 * @param array{date: string, id: int}|null $cursor     Cursor to continue from.
+	 */
+	private function query( array $query_args, string $order, ?array $cursor, string $operator ): WP_Query {
+		$orderby = static function ( string $sql ) use ( $order ): string {
+			global $wpdb;
+			unset( $sql );
+			return "{$wpdb->posts}.post_date_gmt {$order}, {$wpdb->posts}.ID {$order}";
+		};
+		$where   = static function ( string $sql ) use ( $cursor, $operator ): string {
+			global $wpdb;
+
+			if ( ! $cursor ) {
+				return $sql;
+			}
+
+			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Operator is constrained to < or > by the caller.
+			$cursor_sql = $wpdb->prepare(
+				" AND ( {$wpdb->posts}.post_date_gmt {$operator} %s OR ( {$wpdb->posts}.post_date_gmt = %s AND {$wpdb->posts}.ID {$operator} %d ) )",
+				$cursor['date'],
+				$cursor['date'],
+				$cursor['id']
+			);
+			// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			return $sql . $cursor_sql;
+		};
+
+		add_filter( 'posts_orderby', $orderby );
+		add_filter( 'posts_where', $where );
+		$query = new WP_Query( $query_args );
+		remove_filter( 'posts_orderby', $orderby );
+		remove_filter( 'posts_where', $where );
+
+		return $query;
 	}
 }

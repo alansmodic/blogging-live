@@ -7,5 +7,5 @@
 
 return [
 	'dependencies' => [ 'wp-blocks', 'wp-components', 'wp-element', 'wp-i18n', 'wp-block-editor', 'wp-server-side-render' ],
-	'version'      => '1.0.0',
+	'version'      => (string) filemtime( __DIR__ . '/index.js' ),
 ];

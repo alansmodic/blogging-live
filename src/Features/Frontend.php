@@ -52,9 +52,9 @@ final class Frontend implements Feature {
 	}
 
 	/**
-	 * @param array<string, mixed> $attributes Shortcode attributes.
+	 * @param array<string, mixed>|string $attributes Shortcode attributes.
 	 */
-	public function shortcode( array $attributes = [] ): string {
+	public function shortcode( array|string $attributes = [] ): string {
 		$attributes       = shortcode_atts(
 			[
 				'id'          => 0,
@@ -65,18 +65,19 @@ final class Frontend implements Feature {
 			'blogging-live'
 		);
 		$blogging_live_id = absint( $attributes['id'] );
-
-		if ( ! $blogging_live_id && absint( $attributes['post_id'] ) ) {
-			$blogging_live    = $this->blogging_lives->find_for_host( absint( $attributes['post_id'] ) );
-			$blogging_live_id = $blogging_live ? $blogging_live->ID : 0;
-		}
+		$host_id          = absint( $attributes['post_id'] );
 
 		if ( ! $blogging_live_id ) {
-			$blogging_live    = $this->blogging_lives->find_for_host( get_the_ID() );
-			$blogging_live_id = $blogging_live ? $blogging_live->ID : 0;
+			// get_the_ID() is false outside a post context, such as a widget on an archive.
+			$host_id = $host_id ? $host_id : absint( get_the_ID() );
+
+			if ( $host_id ) {
+				$blogging_live    = $this->blogging_lives->find_for_host( $host_id );
+				$blogging_live_id = $blogging_live ? $blogging_live->ID : 0;
+			}
 		}
 
-		return $this->render( $blogging_live_id, [ 'show_header' => 'false' !== $attributes['show_header'] ] );
+		return $blogging_live_id ? $this->render( $blogging_live_id, [ 'show_header' => 'false' !== $attributes['show_header'] ] ) : '';
 	}
 
 	/**
@@ -92,12 +93,19 @@ final class Frontend implements Feature {
 	 */
 	public function render( int $blogging_live_id, array $args = [] ): string {
 		$blogging_live = $this->blogging_lives->find( $blogging_live_id );
-		if ( ! $blogging_live || ( ! $this->blogging_lives->is_public( $blogging_live_id ) && ! current_user_can( 'read_post', $blogging_live_id ) ) ) {
+		if ( ! $blogging_live || ! $this->blogging_lives->can_view( $blogging_live_id ) ) {
 			return '';
 		}
 
 		$per_page   = max( 1, min( 50, absint( $args['per_page'] ?? Settings::get( 'entries_per_page' ) ) ) );
 		$feed       = $this->entries->feed( $blogging_live_id, [ 'per_page' => $per_page ] );
+		$pinned     = self::pinned_limit() ? $this->entries->feed(
+			$blogging_live_id,
+			[
+				'per_page'    => self::pinned_limit(),
+				'pinned_only' => true,
+			]
+		)['entries'] : [];
 		$order_meta = (string) get_post_meta( $blogging_live_id, '_blogging_live_order', true );
 		$order      = $order_meta ? $order_meta : 'desc';
 		$posts      = $feed['entries'];
@@ -106,22 +114,14 @@ final class Frontend implements Feature {
 			$posts = array_reverse( $posts );
 		}
 
-		$this->rendering = true;
-		$entry_data      = [];
-		foreach ( $posts as $entry ) {
-			$presented           = $this->presenter->present( $entry );
-			$presented['html']   = $this->templates->render( 'entry', [ 'entry' => $presented ] );
-			$presented['cursor'] = $this->entries->cursor( $entry );
-			$entry_data[]        = $presented;
-		}
-		$this->rendering = false;
+		$entry_data  = array_map( [ $this, 'entry_payload' ], $posts );
+		$pinned_data = array_map( [ $this, 'entry_payload' ], $pinned );
 
 		$newest       = $feed['entries'][0] ?? null;
 		$oldest       = ! empty( $feed['entries'] ) ? $feed['entries'][ count( $feed['entries'] ) - 1 ] : null;
 		$refresh_meta = absint( get_post_meta( $blogging_live_id, '_blogging_live_refresh_interval', true ) );
 		$refresh      = $refresh_meta ? $refresh_meta : absint( Settings::get( 'poll_interval' ) );
-		$status_meta  = (string) get_post_meta( $blogging_live_id, '_blogging_live_status', true );
-		$status       = $status_meta ? $status_meta : 'scheduled';
+		$status       = $this->blogging_lives->status( $blogging_live_id );
 
 		Assets::enqueue();
 
@@ -130,12 +130,16 @@ final class Frontend implements Feature {
 			[
 				'blogging_live' => $blogging_live,
 				'entries'       => $entry_data,
+				'pinned'        => $pinned_data,
+				'pinned_limit'  => self::pinned_limit(),
 				'status'        => $status,
+				'status_label'  => BloggingLiveRepository::status_labels()[ $status ],
 				'order'         => $order,
 				'refresh'       => max( 5, $refresh ),
 				'has_more'      => $feed['has_more'],
 				'newest'        => $newest ? $this->entries->cursor( $newest ) : '',
 				'oldest'        => $oldest ? $this->entries->cursor( $oldest ) : '',
+				'server_time'   => gmdate( 'Y-m-d H:i:s' ),
 				'show_header'   => ! isset( $args['show_header'] ) || (bool) $args['show_header'],
 				'endpoint'      => rest_url( 'blogging-live/v1/blogging-lives/' . $blogging_live_id . '/entries' ),
 			]
@@ -144,17 +148,58 @@ final class Frontend implements Feature {
 		/**
 		 * Filters complete Blogging Live HTML.
 		 *
-		 * @param string  $output   Rendered output.
+		 * @param string  $output        Rendered output.
 		 * @param WP_Post $blogging_live Blogging Live container post.
 		 */
 		return (string) apply_filters( 'blogging_live_html', $output, $blogging_live );
 	}
 
-	public function entry_html( WP_Post $entry ): string {
+	/**
+	 * Presented entry data with its feed markup, pinned-section markup, and cursor.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function entry_payload( WP_Post $entry ): array {
+		$was_rendering   = $this->rendering;
 		$this->rendering = true;
-		$data            = $this->presenter->present( $entry );
-		$html            = $this->templates->render( 'entry', [ 'entry' => $data ] );
-		$this->rendering = false;
-		return $html;
+
+		$data                = $this->presenter->present( $entry );
+		$data['cursor']      = $this->entries->cursor( $entry );
+		$data['html']        = $this->entry_markup( $data, 'feed' );
+		$data['pinned_html'] = $data['is_pinned'] ? $this->entry_markup( $data, 'pinned' ) : '';
+
+		$this->rendering = $was_rendering;
+
+		return $data;
+	}
+
+	public function entry_html( WP_Post $entry ): string {
+		return $this->entry_payload( $entry )['html'];
+	}
+
+	/**
+	 * Maximum number of pinned entries shown above the feed.
+	 */
+	public static function pinned_limit(): int {
+		/**
+		 * Filters how many pinned entries appear above the feed. Return 0 to hide the pinned section.
+		 *
+		 * @param int $limit Maximum pinned entries.
+		 */
+		return max( 0, min( 10, (int) apply_filters( 'blogging_live_pinned_limit', 3 ) ) );
+	}
+
+	/**
+	 * @param array<string, mixed> $data    Presented entry data.
+	 * @param string               $context Where the entry appears: 'feed' or 'pinned'.
+	 */
+	private function entry_markup( array $data, string $context ): string {
+		return $this->templates->render(
+			'entry',
+			[
+				'entry'   => $data,
+				'context' => $context,
+			]
+		);
 	}
 }

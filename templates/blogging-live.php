@@ -13,12 +13,8 @@ defined( 'ABSPATH' ) || exit;
 
 $blogging_live        = $data['blogging_live'];
 $entries              = $data['entries'];
+$pinned_entries       = $data['pinned'];
 $blogging_live_status = $data['status'];
-$status_labels        = [
-	'scheduled' => __( 'Scheduled', 'blogging-live' ),
-	'live'      => __( 'Live', 'blogging-live' ),
-	'ended'     => __( 'Ended', 'blogging-live' ),
-];
 ?>
 <section
 	id="blogging-live-<?php echo esc_attr( (string) $blogging_live->ID ); ?>"
@@ -30,6 +26,8 @@ $status_labels        = [
 	data-order="<?php echo esc_attr( $data['order'] ); ?>"
 	data-latest-cursor="<?php echo esc_attr( $data['newest'] ); ?>"
 	data-oldest-cursor="<?php echo esc_attr( $data['oldest'] ); ?>"
+	data-server-time="<?php echo esc_attr( $data['server_time'] ); ?>"
+	data-pinned-limit="<?php echo esc_attr( (string) $data['pinned_limit'] ); ?>"
 >
 	<?php if ( $data['show_header'] ) : ?>
 		<header class="blogging-live__header">
@@ -37,11 +35,17 @@ $status_labels        = [
 				<p class="blogging-live__eyebrow"><?php esc_html_e( 'Live coverage', 'blogging-live' ); ?></p>
 				<h2 class="blogging-live__title"><?php echo esc_html( get_the_title( $blogging_live ) ); ?></h2>
 			</div>
-			<span class="blogging-live__status" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: Event status. */ __( 'Blogging Live status: %s', 'blogging-live' ), $status_labels[ $blogging_live_status ] ?? $blogging_live_status ) ); ?>">
-				<?php echo esc_html( $status_labels[ $blogging_live_status ] ?? ucfirst( $blogging_live_status ) ); ?>
+			<span class="blogging-live__status" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: Event status. */ __( 'Blogging Live status: %s', 'blogging-live' ), $data['status_label'] ) ); ?>">
+				<?php echo esc_html( $data['status_label'] ); ?>
 			</span>
 		</header>
 	<?php endif; ?>
+
+	<section class="blogging-live__pinned" aria-label="<?php esc_attr_e( 'Pinned updates', 'blogging-live' ); ?>" <?php echo empty( $pinned_entries ) ? 'hidden' : ''; ?>>
+		<?php foreach ( $pinned_entries as $pinned_entry ) : ?>
+			<?php echo $pinned_entry['pinned_html']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped in entry template. ?>
+		<?php endforeach; ?>
+	</section>
 
 	<button class="blogging-live__new-updates" type="button" hidden aria-live="polite"></button>
 

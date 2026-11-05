@@ -15,6 +15,13 @@ defined( 'ABSPATH' ) || exit;
 
 final class Capabilities implements Feature {
 	/**
+	 * Bump when CAPS changes so existing sites receive the new list.
+	 */
+	public const VERSION = '1';
+
+	public const VERSION_OPTION = 'blogging_live_caps_version';
+
+	/**
 	 * @var string[]
 	 */
 	private const CAPS = [
@@ -49,11 +56,19 @@ final class Capabilities implements Feature {
 	];
 
 	public function register(): void {
-		// Capabilities are installed on activation. This feature is a composition marker.
+		// Activation hooks do not run for code-loaded plugins (including on
+		// WordPress VIP) or on every site of a network, so install lazily.
+		add_action( 'init', [ self::class, 'maybe_add_roles_caps' ], 1 );
+	}
+
+	public static function maybe_add_roles_caps(): void {
+		if ( self::VERSION !== get_option( self::VERSION_OPTION ) ) {
+			self::add_roles_caps();
+		}
 	}
 
 	public static function add_roles_caps(): void {
-		foreach ( [ 'administrator', 'editor' ] as $role_name ) {
+		foreach ( self::roles() as $role_name ) {
 			$role = get_role( $role_name );
 
 			if ( ! $role ) {
@@ -64,10 +79,12 @@ final class Capabilities implements Feature {
 				$role->add_cap( $capability );
 			}
 		}
+
+		update_option( self::VERSION_OPTION, self::VERSION );
 	}
 
 	public static function remove_roles_caps(): void {
-		foreach ( [ 'administrator', 'editor' ] as $role_name ) {
+		foreach ( self::roles() as $role_name ) {
 			$role = get_role( $role_name );
 
 			if ( ! $role ) {
@@ -78,5 +95,22 @@ final class Capabilities implements Feature {
 				$role->remove_cap( $capability );
 			}
 		}
+
+		delete_option( self::VERSION_OPTION );
+	}
+
+	/**
+	 * @return string[]
+	 */
+	private static function roles(): array {
+		/**
+		 * Filters the roles that receive Blogging Live capabilities.
+		 *
+		 * Changing the list affects new installs; bump VERSION or delete the
+		 * blogging_live_caps_version option to reapply it on existing sites.
+		 *
+		 * @param string[] $roles Role names.
+		 */
+		return (array) apply_filters( 'blogging_live_capability_roles', [ 'administrator', 'editor' ] );
 	}
 }
