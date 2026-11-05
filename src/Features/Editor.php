@@ -12,6 +12,7 @@ namespace BloggingLive\Features;
 use BloggingLive\Feature;
 use BloggingLive\Repositories\BloggingLiveRepository;
 use stdClass;
+use WP_Error;
 use WP_REST_Request;
 
 defined( 'ABSPATH' ) || exit;
@@ -62,15 +63,22 @@ final class Editor implements Feature {
 	 * Apply blogging_live_parent before the entry is inserted, so the publish
 	 * check in Admin::entry_post_data() sees the parent in the same save.
 	 */
-	public function assign_parent( stdClass $prepared_post, WP_REST_Request $request ): stdClass {
+	public function assign_parent( stdClass $prepared_post, WP_REST_Request $request ): stdClass|WP_Error {
 		if ( ! $request->has_param( 'blogging_live_parent' ) ) {
 			return $prepared_post;
 		}
 
 		$parent_id = absint( $request->get_param( 'blogging_live_parent' ) );
-		if ( 0 === $parent_id || ( $this->blogging_lives->find( $parent_id ) && current_user_can( 'edit_post', $parent_id ) ) ) {
-			$prepared_post->post_parent = $parent_id;
+
+		if ( $parent_id && ! $this->blogging_lives->find( $parent_id ) ) {
+			return new WP_Error( 'blogging_live_invalid_parent', __( 'The selected Blogging Live does not exist.', 'blogging-live' ), [ 'status' => 400 ] );
 		}
+
+		if ( $parent_id && ! current_user_can( 'edit_post', $parent_id ) ) {
+			return new WP_Error( 'blogging_live_cannot_assign_parent', __( 'You are not allowed to add updates to this Blogging Live.', 'blogging-live' ), [ 'status' => rest_authorization_required_code() ] );
+		}
+
+		$prepared_post->post_parent = $parent_id;
 
 		return $prepared_post;
 	}

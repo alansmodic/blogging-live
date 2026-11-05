@@ -26,17 +26,37 @@ final class CapabilitiesTest extends TestCase {
 		$this->assertSame( Capabilities::VERSION, get_option( Capabilities::VERSION_OPTION ) );
 	}
 
-	public function test_capability_roles_are_filterable(): void {
-		Capabilities::remove_roles_caps();
-		add_filter( 'blogging_live_capability_roles', static fn(): array => [ 'author' ] );
+	public function test_changing_capability_roles_grants_and_revokes_without_version_bump(): void {
+		Capabilities::add_roles_caps();
+		$this->assertTrue( get_role( 'editor' )->has_cap( 'edit_blogging_live_entries' ) );
 
+		$roles = static fn(): array => [ 'administrator', 'author' ];
+		add_filter( 'blogging_live_capability_roles', $roles );
 		Capabilities::maybe_add_roles_caps();
 
 		$this->assertTrue( get_role( 'author' )->has_cap( 'edit_blogging_live_entries' ) );
 		$this->assertFalse( get_role( 'editor' )->has_cap( 'edit_blogging_live_entries' ) );
+		$this->assertTrue( get_role( 'administrator' )->has_cap( 'edit_blogging_live_entries' ) );
 
+		// Uninstall also removes capabilities from roles that left the list.
+		remove_filter( 'blogging_live_capability_roles', $roles );
 		Capabilities::remove_roles_caps();
-		remove_all_filters( 'blogging_live_capability_roles' );
+		$this->assertFalse( get_role( 'author' )->has_cap( 'edit_blogging_live_entries' ) );
+		$this->assertFalse( get_option( Capabilities::ROLES_OPTION ) );
+
 		Capabilities::add_roles_caps();
+	}
+
+	public function test_unchanged_roles_do_not_rewrite_capabilities(): void {
+		Capabilities::add_roles_caps();
+		$writes = 0;
+		$count  = static function () use ( &$writes ): void {
+			++$writes;
+		};
+		add_action( 'update_option_' . Capabilities::ROLES_OPTION, $count );
+
+		Capabilities::maybe_add_roles_caps();
+
+		$this->assertSame( 0, $writes );
 	}
 }

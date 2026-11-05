@@ -40,7 +40,7 @@ Use this for a CDN or full-page-cache purge. The base plugin does not depend on 
 
 ### `blogging_live_capability_roles`
 
-Filters the roles that receive Blogging Live capabilities. Capabilities are installed once per site; bump `Capabilities::VERSION` or delete the `blogging_live_caps_version` option to reapply a changed list.
+Filters the roles that receive Blogging Live capabilities. Changes apply on the next page load of each site: roles added to the list gain the capabilities and roles removed from it lose them.
 
 ```php
 add_filter(

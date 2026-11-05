@@ -41,6 +41,11 @@
 	 * Parse server-rendered entry markup into elements. Scripts inserted through
 	 * HTML parsing never run, so they are recreated to let embeds initialize.
 	 *
+	 * Security: this markup is the same server-rendered the_content output the
+	 * page itself prints, so re-running its scripts grants nothing new. Script
+	 * tags only survive saving for users with unfiltered_html; everyone else's
+	 * entry content is filtered by kses before it reaches this feed.
+	 *
 	 * @param {string} html Entry markup.
 	 * @return {Element[]} Parsed elements.
 	 */

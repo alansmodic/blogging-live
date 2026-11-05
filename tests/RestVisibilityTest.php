@@ -82,6 +82,40 @@ final class RestVisibilityTest extends TestCase {
 		$this->assertSame( $blogging_live_id, $response->get_data()['blogging_live_parent'] );
 	}
 
+	public function test_invalid_rest_parent_is_rejected(): void {
+		[ , $blogging_live_id ] = $this->create_blogging_live();
+		$not_a_container        = self::factory()->post->create();
+
+		$missing = $this->rest(
+			'POST',
+			$this->entry_route(),
+			[
+				'title'                => 'Bad parent',
+				'blogging_live_parent' => $not_a_container,
+			]
+		);
+		$this->assertSame( 400, $missing->get_status() );
+		$this->assertSame( 'blogging_live_invalid_parent', $missing->get_data()['code'] );
+
+		// An author can write entries but cannot edit this editor-owned container.
+		$author = self::factory()->user->create( [ 'role' => 'author' ] );
+		get_role( 'author' )->add_cap( 'edit_blogging_live_entries' );
+		wp_set_current_user( $author );
+
+		$forbidden = $this->rest(
+			'POST',
+			$this->entry_route(),
+			[
+				'title'                => 'Not mine',
+				'blogging_live_parent' => $blogging_live_id,
+			]
+		);
+		get_role( 'author' )->remove_cap( 'edit_blogging_live_entries' );
+
+		$this->assertSame( 403, $forbidden->get_status() );
+		$this->assertSame( 'blogging_live_cannot_assign_parent', $forbidden->get_data()['code'] );
+	}
+
 	public function test_entry_without_parent_is_kept_as_draft(): void {
 		$entry_id = self::factory()->post->create(
 			[
