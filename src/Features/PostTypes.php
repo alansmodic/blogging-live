@@ -1,6 +1,6 @@
 <?php
 /**
- * Liveblog post types.
+ * Blogging Live post types.
  *
  * @package BloggingLive
  */
@@ -14,8 +14,8 @@ use BloggingLive\Feature;
 defined( 'ABSPATH' ) || exit;
 
 final class PostTypes implements Feature {
-	public const LIVEBLOG_POST_TYPE = 'blogging_live';
-	public const ENTRY_POST_TYPE    = 'blogging_live_entry';
+	public const BLOGGING_LIVE_POST_TYPE = 'blogging_live';
+	public const ENTRY_POST_TYPE         = 'blogging_live_entry';
 
 	public function register(): void {
 		add_action( 'init', [ self::class, 'register_post_types' ], 5 );
@@ -23,7 +23,7 @@ final class PostTypes implements Feature {
 
 	public static function register_post_types(): void {
 		register_post_type(
-			self::LIVEBLOG_POST_TYPE,
+			self::BLOGGING_LIVE_POST_TYPE,
 			[
 				'labels'              => self::blogging_live_labels(),
 				'public'              => false,
@@ -50,7 +50,7 @@ final class PostTypes implements Feature {
 				'public'              => false,
 				'publicly_queryable'  => false,
 				'show_ui'             => true,
-				'show_in_menu'        => 'edit.php?post_type=' . self::LIVEBLOG_POST_TYPE,
+				'show_in_menu'        => 'edit.php?post_type=' . self::BLOGGING_LIVE_POST_TYPE,
 				'show_in_rest'        => true,
 				'supports'            => [ 'title', 'editor', 'author', 'revisions', 'thumbnail' ],
 				'capability_type'     => [ 'blogging_live_entry', 'blogging_live_entries' ],
@@ -70,10 +70,10 @@ final class PostTypes implements Feature {
 	 */
 	public static function host_post_types(): array {
 		$post_types = get_post_types( [ 'public' => true ], 'names' );
-		unset( $post_types['attachment'], $post_types[ self::LIVEBLOG_POST_TYPE ], $post_types[ self::ENTRY_POST_TYPE ] );
+		unset( $post_types['attachment'], $post_types[ self::BLOGGING_LIVE_POST_TYPE ], $post_types[ self::ENTRY_POST_TYPE ] );
 
 		/**
-		 * Filters post types that can host a liveblog.
+		 * Filters post types that can host a Blogging Live.
 		 *
 		 * @param string[] $post_types Public host post-type names.
 		 */
@@ -85,18 +85,18 @@ final class PostTypes implements Feature {
 	 */
 	private static function blogging_live_labels(): array {
 		return [
-			'name'               => __( 'Liveblogs', 'blogging-live' ),
-			'singular_name'      => __( 'Liveblog', 'blogging-live' ),
-			'add_new'            => __( 'Add liveblog', 'blogging-live' ),
-			'add_new_item'       => __( 'Add liveblog', 'blogging-live' ),
-			'edit_item'          => __( 'Edit liveblog', 'blogging-live' ),
-			'new_item'           => __( 'New liveblog', 'blogging-live' ),
+			'name'               => __( 'Blogging Lives', 'blogging-live' ),
+			'singular_name'      => __( 'Blogging Live', 'blogging-live' ),
+			'add_new'            => __( 'Add Blogging Live', 'blogging-live' ),
+			'add_new_item'       => __( 'Add Blogging Live', 'blogging-live' ),
+			'edit_item'          => __( 'Edit Blogging Live', 'blogging-live' ),
+			'new_item'           => __( 'New Blogging Live', 'blogging-live' ),
 			'view_item'          => __( 'View host article', 'blogging-live' ),
-			'search_items'       => __( 'Search liveblogs', 'blogging-live' ),
-			'not_found'          => __( 'No liveblogs found.', 'blogging-live' ),
-			'not_found_in_trash' => __( 'No liveblogs found in Trash.', 'blogging-live' ),
-			'all_items'          => __( 'All liveblogs', 'blogging-live' ),
-			'menu_name'          => __( 'Liveblogs', 'blogging-live' ),
+			'search_items'       => __( 'Search Blogging Lives', 'blogging-live' ),
+			'not_found'          => __( 'No Blogging Lives found.', 'blogging-live' ),
+			'not_found_in_trash' => __( 'No Blogging Lives found in Trash.', 'blogging-live' ),
+			'all_items'          => __( 'All Blogging Lives', 'blogging-live' ),
+			'menu_name'          => __( 'Blogging Live', 'blogging-live' ),
 		];
 	}
 
@@ -106,11 +106,11 @@ final class PostTypes implements Feature {
 	private static function entry_labels(): array {
 		return [
 			'name'               => __( 'Updates', 'blogging-live' ),
-			'singular_name'      => __( 'Liveblog update', 'blogging-live' ),
+			'singular_name'      => __( 'Blogging Live update', 'blogging-live' ),
 			'add_new'            => __( 'Add update', 'blogging-live' ),
-			'add_new_item'       => __( 'Add liveblog update', 'blogging-live' ),
-			'edit_item'          => __( 'Edit liveblog update', 'blogging-live' ),
-			'new_item'           => __( 'New liveblog update', 'blogging-live' ),
+			'add_new_item'       => __( 'Add Blogging Live update', 'blogging-live' ),
+			'edit_item'          => __( 'Edit Blogging Live update', 'blogging-live' ),
+			'new_item'           => __( 'New Blogging Live update', 'blogging-live' ),
 			'search_items'       => __( 'Search updates', 'blogging-live' ),
 			'not_found'          => __( 'No updates found.', 'blogging-live' ),
 			'not_found_in_trash' => __( 'No updates found in Trash.', 'blogging-live' ),

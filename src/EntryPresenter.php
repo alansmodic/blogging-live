@@ -19,8 +19,8 @@ final class EntryPresenter {
 	 */
 	public function present( WP_Post $entry ): array {
 		$blogging_live_id = absint( $entry->post_parent );
-		$liveblog         = get_post( $blogging_live_id );
-		$host_id          = $liveblog instanceof WP_Post ? absint( $liveblog->post_parent ) : 0;
+		$blogging_live    = get_post( $blogging_live_id );
+		$host_id          = $blogging_live instanceof WP_Post ? absint( $blogging_live->post_parent ) : 0;
 		$author_ids       = array_values( array_filter( array_map( 'absint', (array) get_post_meta( $entry->ID, '_blogging_live_author_ids', true ) ) ) );
 
 		if ( empty( $author_ids ) && $entry->post_author ) {
@@ -78,7 +78,7 @@ final class EntryPresenter {
 		];
 
 		/**
-		 * Filters the public representation of a liveblog entry.
+		 * Filters the public representation of a Blogging Live entry.
 		 *
 		 * @param array<string, mixed> $data  Entry data.
 		 * @param WP_Post              $entry Entry post.

@@ -11,7 +11,7 @@
 
 		if ( ! response.ok ) {
 			throw new Error(
-				`Liveblog request failed with status ${ response.status }`
+				`Blogging Live request failed with status ${ response.status }`
 			);
 		}
 

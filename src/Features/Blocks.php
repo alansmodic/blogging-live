@@ -1,6 +1,6 @@
 <?php
 /**
- * Dynamic liveblog feed block.
+ * Dynamic Blogging Live feed block.
  *
  * @package BloggingLive
  */

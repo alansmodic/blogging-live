@@ -1,6 +1,6 @@
 <?php
 /**
- * Liveblog entry queries and cursors.
+ * Blogging Live entry queries and cursors.
  *
  * @package BloggingLive
  */

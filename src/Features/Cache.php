@@ -1,6 +1,6 @@
 <?php
 /**
- * Generation-based liveblog caching.
+ * Generation-based Blogging Live caching.
  *
  * @package BloggingLive
  */

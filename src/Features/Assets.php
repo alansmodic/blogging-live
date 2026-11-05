@@ -72,7 +72,7 @@ final class Assets implements Feature {
 				[
 					'strings' => [
 						'oneNewUpdate'   => __( '1 new update', 'blogging-live' ),
-						/* translators: %d: Number of new liveblog updates. */
+						/* translators: %d: Number of new Blogging Live updates. */
 						'manyNewUpdates' => __( '%d new updates', 'blogging-live' ),
 						'loading'        => __( 'Loading updates…', 'blogging-live' ),
 						'none'           => __( 'No additional updates.', 'blogging-live' ),

@@ -1,6 +1,6 @@
 <?php
 /**
- * Main liveblog template.
+ * Main Blogging Live template.
  *
  * Themes may override this file at blogging-live/blogging-live.php.
  *
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$liveblog             = $data['liveblog'];
+$blogging_live        = $data['blogging_live'];
 $entries              = $data['entries'];
 $blogging_live_status = $data['status'];
 $status_labels        = [
@@ -21,9 +21,9 @@ $status_labels        = [
 ];
 ?>
 <section
-	id="blogging-live-<?php echo esc_attr( (string) $liveblog->ID ); ?>"
+	id="blogging-live-<?php echo esc_attr( (string) $blogging_live->ID ); ?>"
 	class="blogging-live blogging-live--<?php echo esc_attr( $blogging_live_status ); ?>"
-	data-blogging-live-id="<?php echo esc_attr( (string) $liveblog->ID ); ?>"
+	data-blogging-live-id="<?php echo esc_attr( (string) $blogging_live->ID ); ?>"
 	data-endpoint="<?php echo esc_url( $data['endpoint'] ); ?>"
 	data-refresh="<?php echo esc_attr( (string) $data['refresh'] ); ?>"
 	data-status="<?php echo esc_attr( $blogging_live_status ); ?>"
@@ -35,9 +35,9 @@ $status_labels        = [
 		<header class="blogging-live__header">
 			<div>
 				<p class="blogging-live__eyebrow"><?php esc_html_e( 'Live coverage', 'blogging-live' ); ?></p>
-				<h2 class="blogging-live__title"><?php echo esc_html( get_the_title( $liveblog ) ); ?></h2>
+				<h2 class="blogging-live__title"><?php echo esc_html( get_the_title( $blogging_live ) ); ?></h2>
 			</div>
-			<span class="blogging-live__status" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: Event status. */ __( 'Liveblog status: %s', 'blogging-live' ), $status_labels[ $blogging_live_status ] ?? $blogging_live_status ) ); ?>">
+			<span class="blogging-live__status" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: Event status. */ __( 'Blogging Live status: %s', 'blogging-live' ), $status_labels[ $blogging_live_status ] ?? $blogging_live_status ) ); ?>">
 				<?php echo esc_html( $status_labels[ $blogging_live_status ] ?? ucfirst( $blogging_live_status ) ); ?>
 			</span>
 		</header>

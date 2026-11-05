@@ -17,7 +17,7 @@ Public host post
 ```
 
 - The **host post** is the public article, page, or custom post type readers visit.
-- The **liveblog container** is a child of the host and stores event-level state such as status, dates, display order, polling interval, and last-updated time.
+- The **Blogging Live container** is a child of the host and stores event-level state such as status, dates, display order, polling interval, and last-updated time.
 - Each **update** is a child of the container and uses the normal block editor, authors, revisions, publication status, timestamps, and featured image support.
 
 This model keeps the host URL canonical, gives every update a complete editorial lifecycle, works with familiar WordPress APIs, and avoids coupling the plugin to a particular theme or hosting platform.
@@ -57,15 +57,15 @@ wp plugin activate blogging-live
 
 You can also download the repository as a ZIP, upload it through **Plugins → Add Plugin → Upload Plugin**, and activate **Blogging Live**.
 
-### First liveblog
+### First Blogging Live
 
 1. Edit a public post, page, or supported custom post type.
-2. Select **Enable liveblogging for this content** in the Liveblog panel and save.
-3. Choose **Manage liveblog** to set the event status, coverage dates, display order, and polling interval.
+2. Select **Enable Blogging Live for this content** in the Blogging Live panel and save.
+3. Choose **Manage Blogging Live** to set the event status, coverage dates, display order, and polling interval.
 4. Choose **Add update** to create entries in the block editor.
 5. Publish entries as coverage develops.
 
-The feed is appended to enabled host content by default. Turn off automatic placement under **Liveblogs → Settings** when using the block or shortcode instead.
+The feed is appended to enabled host content by default. Turn off automatic placement under **Blogging Live → Settings** when using the block or shortcode instead.
 
 ## Rendering and delivery
 
@@ -98,14 +98,14 @@ Automatic placement is enabled by default. For explicit placement, insert the **
 [blogging-live post_id="456" show_header="false"]
 ```
 
-A block or shortcode without a container ID resolves the liveblog attached to the current host post.
+A block or shortcode without a container ID resolves the Blogging Live attached to the current host post.
 
 ## REST API
 
 ```text
-GET /wp-json/blogging-live/v1/liveblogs/{id}
-GET /wp-json/blogging-live/v1/liveblogs/{id}/entries
-GET /wp-json/blogging-live/v1/posts/{post_id}/liveblog
+GET /wp-json/blogging-live/v1/blogging-lives/{id}
+GET /wp-json/blogging-live/v1/blogging-lives/{id}/entries
+GET /wp-json/blogging-live/v1/posts/{post_id}/blogging-live
 ```
 
 Entry feed parameters:
@@ -116,7 +116,7 @@ Entry feed parameters:
 
 Cursors combine an entry's publication time and post ID. This avoids the gaps and duplicate results that offset pagination can produce while new entries are being published.
 
-Feed responses contain normalized entry data and rendered HTML, allowing the default reader and alternative front ends to consume the same contract. Public responses receive short cache headers; private and draft liveblogs require an authenticated user who can read the container and return `private, no-store`.
+Feed responses contain normalized entry data and rendered HTML, allowing the default reader and alternative front ends to consume the same contract. Public responses receive short cache headers; private and draft Blogging Lives require an authenticated user who can read the container and return `private, no-store`.
 
 ## Architecture
 
@@ -124,13 +124,13 @@ The plugin is composed as a small set of features coordinated by `BloggingLive\P
 
 | Area | Responsibility |
 | --- | --- |
-| `PostTypes` | Registers liveblog containers and update post types |
+| `PostTypes` | Registers Blogging Live containers and update post types |
 | `Metadata` | Registers host, container, and entry metadata |
 | `Capabilities` | Installs and removes editorial capabilities |
 | `Admin` | Adds editorial panels, save handlers, and list-table columns |
 | `Lifecycle` | Reacts to entry and host changes, updates timestamps, and invalidates caches |
 | `EntryRepository` | Queries ordered entry feeds and manages cursors |
-| `LiveblogRepository` | Resolves and creates host/container relationships |
+| `BloggingLiveRepository` | Resolves and creates host/container relationships |
 | `Frontend` | Coordinates server rendering, automatic placement, and shortcodes |
 | `Blocks` | Registers the dynamic Blogging Live block |
 | `RestApi` | Exposes containers and cursor-paginated entries |
@@ -179,7 +179,7 @@ This keeps invalidation deterministic without requiring a particular persistent 
 
 ## Data retention
 
-Deactivation preserves all settings and editorial content. Uninstall removes plugin settings and role capabilities but deliberately preserves host metadata, liveblog containers, and entries. Export or explicitly delete coverage before permanent removal when content retention is not desired.
+Deactivation preserves all settings and editorial content. Uninstall removes plugin settings and role capabilities but deliberately preserves host metadata, Blogging Live containers, and entries. Export or explicitly delete coverage before permanent removal when content retention is not desired.
 
 ## Initial release: 1.0.0
 

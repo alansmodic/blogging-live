@@ -12,7 +12,7 @@ A portable liveblog architecture using WordPress posts, blocks, REST, server ren
 
 == Description ==
 
-Blogging Live turns a post, page, or public custom post type into a live event. It stores the event in a liveblog container and every update as an individual child post. The plugin includes an editorial workflow, a cursor-based REST feed, a dynamic block, a shortcode, server-rendered templates, polling, object-cache invalidation, and LiveBlogPosting schema.
+Blogging Live turns a post, page, or public custom post type into a live event. It stores the event in a Blogging Live container and every update as an individual child post. The plugin includes an editorial workflow, a cursor-based REST feed, a dynamic block, a shortcode, server-rendered templates, polling, object-cache invalidation, and LiveBlogPosting schema.
 
 The base plugin deliberately contains no advertising-network, analytics, CDN, sports-data, or publisher-specific code. Those systems can integrate through documented WordPress hooks and template overrides.
 
@@ -20,8 +20,8 @@ The base plugin deliberately contains no advertising-network, analytics, CDN, sp
 
 1. Upload the `blogging-live` folder to `/wp-content/plugins/`.
 2. Activate Blogging Live.
-3. Edit a post and enable liveblogging in the Liveblog panel.
-4. Save the post, then manage the generated liveblog and add updates.
+3. Edit a post and enable Blogging Live in the Blogging Live panel.
+4. Save the post, then manage the generated Blogging Live and add updates.
 
 == Frequently Asked Questions ==
 

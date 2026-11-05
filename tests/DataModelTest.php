@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 use BloggingLive\Features\PostTypes;
 use BloggingLive\Repositories\EntryRepository;
-use BloggingLive\Repositories\LiveblogRepository;
+use BloggingLive\Repositories\BloggingLiveRepository;
 use BloggingLive\Features\Cache;
 
 final class DataModelTest extends WP_UnitTestCase {
@@ -25,7 +25,7 @@ final class DataModelTest extends WP_UnitTestCase {
 			]
 		);
 
-		$repository  = new LiveblogRepository();
+		$repository       = new BloggingLiveRepository();
 		$blogging_live_id = $repository->create_for_host( $host_id );
 
 		$this->assertIsInt( $blogging_live_id );

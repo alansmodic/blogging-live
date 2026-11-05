@@ -1,6 +1,6 @@
 <?php
 /**
- * Liveblog persistence helpers.
+ * Blogging Live persistence helpers.
  *
  * @package BloggingLive
  */
@@ -15,24 +15,24 @@ use WP_Post;
 
 defined( 'ABSPATH' ) || exit;
 
-final class LiveblogRepository {
+final class BloggingLiveRepository {
 	public function find( int $blogging_live_id ): ?WP_Post {
 		$post = get_post( $blogging_live_id );
 
-		return $post instanceof WP_Post && PostTypes::LIVEBLOG_POST_TYPE === $post->post_type ? $post : null;
+		return $post instanceof WP_Post && PostTypes::BLOGGING_LIVE_POST_TYPE === $post->post_type ? $post : null;
 	}
 
 	public function find_for_host( int $host_id ): ?WP_Post {
 		$blogging_live_id = absint( get_post_meta( $host_id, '_blogging_live_id', true ) );
-		$liveblog         = $this->find( $blogging_live_id );
+		$blogging_live    = $this->find( $blogging_live_id );
 
-		if ( $liveblog ) {
-			return $liveblog;
+		if ( $blogging_live ) {
+			return $blogging_live;
 		}
 
 		$matches = get_posts(
 			[
-				'post_type'        => PostTypes::LIVEBLOG_POST_TYPE,
+				'post_type'        => PostTypes::BLOGGING_LIVE_POST_TYPE,
 				'post_parent'      => $host_id,
 				'post_status'      => [ 'publish', 'draft', 'private', 'pending', 'future' ],
 				'posts_per_page'   => 1,
@@ -65,17 +65,17 @@ final class LiveblogRepository {
 		}
 
 		if ( ! in_array( $host->post_type, PostTypes::host_post_types(), true ) ) {
-			return new WP_Error( 'blogging_live_unsupported_host', __( 'This post type cannot host a liveblog.', 'blogging-live' ) );
+			return new WP_Error( 'blogging_live_unsupported_host', __( 'This post type cannot host a Blogging Live.', 'blogging-live' ) );
 		}
 
 		$blogging_live_id = wp_insert_post(
 			[
-				'post_type'   => PostTypes::LIVEBLOG_POST_TYPE,
+				'post_type'   => PostTypes::BLOGGING_LIVE_POST_TYPE,
 				'post_status' => 'publish' === $host->post_status ? 'publish' : 'draft',
 				'post_parent' => $host_id,
 				'post_title'  => sprintf(
 					/* translators: %s: Host post title. */
-					__( 'Liveblog: %s', 'blogging-live' ),
+					__( 'Blogging Live: %s', 'blogging-live' ),
 					$host->post_title ? $host->post_title : __( 'Untitled', 'blogging-live' )
 				),
 				'meta_input'  => [
@@ -100,15 +100,15 @@ final class LiveblogRepository {
 	}
 
 	public function host_id( int $blogging_live_id ): int {
-		$liveblog = $this->find( $blogging_live_id );
+		$blogging_live = $this->find( $blogging_live_id );
 
-		return $liveblog ? absint( $liveblog->post_parent ) : 0;
+		return $blogging_live ? absint( $blogging_live->post_parent ) : 0;
 	}
 
 	public function is_public( int $blogging_live_id ): bool {
-		$liveblog = $this->find( $blogging_live_id );
+		$blogging_live = $this->find( $blogging_live_id );
 
-		if ( ! $liveblog || 'publish' !== $liveblog->post_status ) {
+		if ( ! $blogging_live || 'publish' !== $blogging_live->post_status ) {
 			return false;
 		}
 

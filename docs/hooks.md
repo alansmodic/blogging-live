@@ -40,7 +40,7 @@ Use this for a CDN or full-page-cache purge. The base plugin does not depend on 
 
 ### `blogging_live_host_post_types`
 
-Filters public post types that can host a liveblog.
+Filters public post types that can host a Blogging Live.
 
 ```php
 add_filter(
@@ -79,7 +79,7 @@ Filters trusted rendered block content immediately before an entry template outp
 
 ### `blogging_live_html`
 
-Filters the complete server-rendered liveblog container.
+Filters the complete server-rendered Blogging Live container.
 
 ### `blogging_live_schema`
 

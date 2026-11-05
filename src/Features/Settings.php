@@ -42,7 +42,7 @@ final class Settings implements Feature {
 
 	public function add_page(): void {
 		add_submenu_page(
-			'edit.php?post_type=' . PostTypes::LIVEBLOG_POST_TYPE,
+			'edit.php?post_type=' . PostTypes::BLOGGING_LIVE_POST_TYPE,
 			__( 'Blogging Live settings', 'blogging-live' ),
 			__( 'Settings', 'blogging-live' ),
 			'manage_options',
@@ -66,7 +66,7 @@ final class Settings implements Feature {
 
 		$this->add_number_field( 'entries_per_page', __( 'Entries per request', 'blogging-live' ), 1, 50 );
 		$this->add_number_field( 'poll_interval', __( 'Polling interval in seconds', 'blogging-live' ), 5, 300 );
-		$this->add_checkbox_field( 'auto_append', __( 'Append liveblogs to host content automatically', 'blogging-live' ) );
+		$this->add_checkbox_field( 'auto_append', __( 'Append Blogging Lives to host content automatically', 'blogging-live' ) );
 		$this->add_checkbox_field( 'touch_host', __( 'Update the host post modified time when an entry changes', 'blogging-live' ) );
 	}
 

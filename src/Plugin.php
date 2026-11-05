@@ -22,7 +22,7 @@ use BloggingLive\Features\RestApi;
 use BloggingLive\Features\Seo;
 use BloggingLive\Features\Settings;
 use BloggingLive\Repositories\EntryRepository;
-use BloggingLive\Repositories\LiveblogRepository;
+use BloggingLive\Repositories\BloggingLiveRepository;
 use BloggingLive\Templates\TemplateLoader;
 
 defined( 'ABSPATH' ) || exit;
@@ -50,24 +50,24 @@ final class Plugin {
 		load_plugin_textdomain( 'blogging-live', false, dirname( plugin_basename( BLOGGING_LIVE_FILE ) ) . '/languages' );
 
 		$cache          = new Cache();
-		$liveblogs      = new LiveblogRepository();
+		$blogging_lives = new BloggingLiveRepository();
 		$entries        = new EntryRepository( $cache );
 		$templates      = new TemplateLoader();
 		$presenter      = new EntryPresenter();
-		$frontend       = new Frontend( $liveblogs, $entries, $templates, $presenter );
+		$frontend       = new Frontend( $blogging_lives, $entries, $templates, $presenter );
 		$this->features = [
 			new PostTypes(),
 			new Metadata(),
 			new Capabilities(),
 			new Settings(),
 			$cache,
-			new Lifecycle( $liveblogs, $entries, $cache ),
-			new Admin( $liveblogs ),
+			new Lifecycle( $blogging_lives, $entries, $cache ),
+			new Admin( $blogging_lives ),
 			new Assets(),
 			$frontend,
 			new Blocks( $frontend ),
-			new RestApi( $liveblogs, $entries, $templates, $presenter ),
-			new Seo( $liveblogs, $entries, $presenter ),
+			new RestApi( $blogging_lives, $entries, $templates, $presenter ),
+			new Seo( $blogging_lives, $entries, $presenter ),
 		];
 
 		foreach ( $this->features as $feature ) {

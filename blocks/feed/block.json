@@ -6,7 +6,7 @@
   "title": "Blogging Live",
   "category": "widgets",
   "icon": "megaphone",
-  "description": "Display the liveblog connected to this post or a specific liveblog.",
+  "description": "Display the Blogging Live connected to this post or a specific Blogging Live.",
   "textdomain": "blogging-live",
   "usesContext": ["postId", "postType"],
   "attributes": {

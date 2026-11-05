@@ -1,6 +1,6 @@
 <?php
 /**
- * Liveblog uninstall routine.
+ * Blogging Live uninstall routine.
  *
  * Editorial posts and metadata are deliberately preserved.
  *

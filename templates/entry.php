@@ -1,6 +1,6 @@
 <?php
 /**
- * Individual liveblog entry template.
+ * Individual Blogging Live entry template.
  *
  * Themes may override this file at blogging-live/entry.php.
  *

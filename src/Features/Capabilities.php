@@ -1,6 +1,6 @@
 <?php
 /**
- * Liveblog capabilities.
+ * Blogging Live capabilities.
  *
  * @package BloggingLive
  */

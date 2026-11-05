@@ -11,7 +11,7 @@ namespace BloggingLive\Features;
 
 use BloggingLive\Feature;
 use BloggingLive\Repositories\EntryRepository;
-use BloggingLive\Repositories\LiveblogRepository;
+use BloggingLive\Repositories\BloggingLiveRepository;
 use WP_Post;
 
 defined( 'ABSPATH' ) || exit;
@@ -20,7 +20,7 @@ final class Lifecycle implements Feature {
 	private bool $updating_host = false;
 
 	public function __construct(
-		private readonly LiveblogRepository $liveblogs,
+		private readonly BloggingLiveRepository $blogging_lives,
 		private readonly EntryRepository $entries,
 		private readonly Cache $cache
 	) {}
@@ -44,7 +44,7 @@ final class Lifecycle implements Feature {
 		}
 
 		$blogging_live_id = absint( $post->post_parent );
-		if ( ! $this->liveblogs->find( $blogging_live_id ) ) {
+		if ( ! $this->blogging_lives->find( $blogging_live_id ) ) {
 			return;
 		}
 
@@ -54,7 +54,7 @@ final class Lifecycle implements Feature {
 		}
 
 		$affects_public_feed = 'publish' === $post->post_status || ( $post_before && 'publish' === $post_before->post_status );
-		$this->refresh_liveblog( $blogging_live_id, $post, $affects_public_feed );
+		$this->refresh_blogging_live( $blogging_live_id, $post, $affects_public_feed );
 	}
 
 	public function entry_deleted( int $post_id, WP_Post $post ): void {
@@ -64,7 +64,7 @@ final class Lifecycle implements Feature {
 			return;
 		}
 
-		$this->refresh_liveblog( absint( $post->post_parent ), $post, 'publish' === $post->post_status, false );
+		$this->refresh_blogging_live( absint( $post->post_parent ), $post, 'publish' === $post->post_status, false );
 	}
 
 	public function entry_meta_changed( int $meta_id, int $post_id, string $meta_key, mixed $meta_value ): void {
@@ -79,7 +79,7 @@ final class Lifecycle implements Feature {
 			return;
 		}
 
-		$this->refresh_liveblog( absint( $post->post_parent ), $post, 'publish' === $post->post_status, false );
+		$this->refresh_blogging_live( absint( $post->post_parent ), $post, 'publish' === $post->post_status, false );
 	}
 
 	public function host_meta_changed( int $meta_id, int $post_id, string $meta_key, mixed $meta_value ): void {
@@ -90,7 +90,7 @@ final class Lifecycle implements Feature {
 		}
 
 		if ( current_user_can( 'create_blogging_lives' ) ) {
-			$this->liveblogs->create_for_host( $post_id );
+			$this->blogging_lives->create_for_host( $post_id );
 		}
 	}
 
@@ -101,18 +101,18 @@ final class Lifecycle implements Feature {
 			return;
 		}
 
-		$liveblog = $this->liveblogs->find_for_host( $post->ID );
-		if ( $liveblog && 'publish' !== $liveblog->post_status ) {
+		$blogging_live = $this->blogging_lives->find_for_host( $post->ID );
+		if ( $blogging_live && 'publish' !== $blogging_live->post_status ) {
 			wp_update_post(
 				[
-					'ID'          => $liveblog->ID,
+					'ID'          => $blogging_live->ID,
 					'post_status' => 'publish',
 				]
 			);
 		}
 	}
 
-	private function refresh_liveblog( int $blogging_live_id, WP_Post $changed_entry, bool $touch_host, bool $fire_published_action = true ): void {
+	private function refresh_blogging_live( int $blogging_live_id, WP_Post $changed_entry, bool $touch_host, bool $fire_published_action = true ): void {
 		if ( $blogging_live_id < 1 ) {
 			return;
 		}
@@ -122,7 +122,7 @@ final class Lifecycle implements Feature {
 		$last_updated = $latest ? $latest->post_modified_gmt : '';
 		update_post_meta( $blogging_live_id, '_blogging_live_last_updated_gmt', $last_updated );
 
-		$host_id = $this->liveblogs->host_id( $blogging_live_id );
+		$host_id = $this->blogging_lives->host_id( $blogging_live_id );
 		if ( $host_id > 0 ) {
 			update_post_meta( $host_id, '_blogging_live_last_updated_gmt', $last_updated );
 			clean_post_cache( $host_id );

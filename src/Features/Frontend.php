@@ -1,6 +1,6 @@
 <?php
 /**
- * Server-rendered liveblog output.
+ * Server-rendered Blogging Live output.
  *
  * @package BloggingLive
  */
@@ -12,7 +12,7 @@ namespace BloggingLive\Features;
 use BloggingLive\EntryPresenter;
 use BloggingLive\Feature;
 use BloggingLive\Repositories\EntryRepository;
-use BloggingLive\Repositories\LiveblogRepository;
+use BloggingLive\Repositories\BloggingLiveRepository;
 use BloggingLive\Templates\TemplateLoader;
 use WP_Post;
 
@@ -22,7 +22,7 @@ final class Frontend implements Feature {
 	private bool $rendering = false;
 
 	public function __construct(
-		private readonly LiveblogRepository $liveblogs,
+		private readonly BloggingLiveRepository $blogging_lives,
 		private readonly EntryRepository $entries,
 		private readonly TemplateLoader $templates,
 		private readonly EntryPresenter $presenter = new EntryPresenter()
@@ -67,13 +67,13 @@ final class Frontend implements Feature {
 		$blogging_live_id = absint( $attributes['id'] );
 
 		if ( ! $blogging_live_id && absint( $attributes['post_id'] ) ) {
-			$liveblog         = $this->liveblogs->find_for_host( absint( $attributes['post_id'] ) );
-			$blogging_live_id = $liveblog ? $liveblog->ID : 0;
+			$blogging_live    = $this->blogging_lives->find_for_host( absint( $attributes['post_id'] ) );
+			$blogging_live_id = $blogging_live ? $blogging_live->ID : 0;
 		}
 
 		if ( ! $blogging_live_id ) {
-			$liveblog         = $this->liveblogs->find_for_host( get_the_ID() );
-			$blogging_live_id = $liveblog ? $liveblog->ID : 0;
+			$blogging_live    = $this->blogging_lives->find_for_host( get_the_ID() );
+			$blogging_live_id = $blogging_live ? $blogging_live->ID : 0;
 		}
 
 		return $this->render( $blogging_live_id, [ 'show_header' => 'false' !== $attributes['show_header'] ] );
@@ -83,16 +83,16 @@ final class Frontend implements Feature {
 	 * @param array<string, mixed> $args Rendering arguments.
 	 */
 	public function render_for_host( int $host_id, array $args = [] ): string {
-		$liveblog = $this->liveblogs->find_for_host( $host_id );
-		return $liveblog ? $this->render( $liveblog->ID, $args ) : '';
+		$blogging_live = $this->blogging_lives->find_for_host( $host_id );
+		return $blogging_live ? $this->render( $blogging_live->ID, $args ) : '';
 	}
 
 	/**
 	 * @param array<string, mixed> $args Rendering arguments.
 	 */
 	public function render( int $blogging_live_id, array $args = [] ): string {
-		$liveblog = $this->liveblogs->find( $blogging_live_id );
-		if ( ! $liveblog || ( ! $this->liveblogs->is_public( $blogging_live_id ) && ! current_user_can( 'read_post', $blogging_live_id ) ) ) {
+		$blogging_live = $this->blogging_lives->find( $blogging_live_id );
+		if ( ! $blogging_live || ( ! $this->blogging_lives->is_public( $blogging_live_id ) && ! current_user_can( 'read_post', $blogging_live_id ) ) ) {
 			return '';
 		}
 
@@ -128,26 +128,26 @@ final class Frontend implements Feature {
 		$output = $this->templates->render(
 			'blogging-live',
 			[
-				'liveblog'    => $liveblog,
-				'entries'     => $entry_data,
-				'status'      => $status,
-				'order'       => $order,
-				'refresh'     => max( 5, $refresh ),
-				'has_more'    => $feed['has_more'],
-				'newest'      => $newest ? $this->entries->cursor( $newest ) : '',
-				'oldest'      => $oldest ? $this->entries->cursor( $oldest ) : '',
-				'show_header' => ! isset( $args['show_header'] ) || (bool) $args['show_header'],
-				'endpoint'    => rest_url( 'blogging-live/v1/liveblogs/' . $blogging_live_id . '/entries' ),
+				'blogging_live' => $blogging_live,
+				'entries'       => $entry_data,
+				'status'        => $status,
+				'order'         => $order,
+				'refresh'       => max( 5, $refresh ),
+				'has_more'      => $feed['has_more'],
+				'newest'        => $newest ? $this->entries->cursor( $newest ) : '',
+				'oldest'        => $oldest ? $this->entries->cursor( $oldest ) : '',
+				'show_header'   => ! isset( $args['show_header'] ) || (bool) $args['show_header'],
+				'endpoint'      => rest_url( 'blogging-live/v1/blogging-lives/' . $blogging_live_id . '/entries' ),
 			]
 		);
 
 		/**
-		 * Filters complete liveblog HTML.
+		 * Filters complete Blogging Live HTML.
 		 *
 		 * @param string  $output   Rendered output.
-		 * @param WP_Post $liveblog Liveblog container post.
+		 * @param WP_Post $blogging_live Blogging Live container post.
 		 */
-		return (string) apply_filters( 'blogging_live_html', $output, $liveblog );
+		return (string) apply_filters( 'blogging_live_html', $output, $blogging_live );
 	}
 
 	public function entry_html( WP_Post $entry ): string {

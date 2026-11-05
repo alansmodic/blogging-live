@@ -23,9 +23,9 @@
 						title: __( 'Blogging Live settings', 'blogging-live' ),
 					},
 					el( TextControl, {
-						label: __( 'Liveblog ID', 'blogging-live' ),
+						label: __( 'Blogging Live ID', 'blogging-live' ),
 						help: __(
-							'Leave at 0 to use the liveblog connected to this post.',
+							'Leave at 0 to use the Blogging Live connected to this post.',
 							'blogging-live'
 						),
 						type: 'number',
@@ -37,7 +37,7 @@
 							} ),
 					} ),
 					el( ToggleControl, {
-						label: __( 'Show liveblog header', 'blogging-live' ),
+						label: __( 'Show Blogging Live header', 'blogging-live' ),
 						checked: attributes.showHeader,
 						onChange: ( value ) =>
 							setAttributes( { showHeader: value } ),

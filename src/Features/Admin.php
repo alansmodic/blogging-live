@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace BloggingLive\Features;
 
 use BloggingLive\Feature;
-use BloggingLive\Repositories\LiveblogRepository;
+use BloggingLive\Repositories\BloggingLiveRepository;
 use DateTimeImmutable;
 use DateTimeZone;
 use WP_Post;
@@ -20,15 +20,15 @@ defined( 'ABSPATH' ) || exit;
 final class Admin implements Feature {
 	private bool $updating_entry_parent = false;
 
-	public function __construct( private readonly LiveblogRepository $liveblogs ) {}
+	public function __construct( private readonly BloggingLiveRepository $blogging_lives ) {}
 
 	public function register(): void {
 		add_action( 'add_meta_boxes', [ $this, 'add_meta_boxes' ] );
 		add_action( 'save_post', [ $this, 'save_host' ], 10, 2 );
-		add_action( 'save_post_' . PostTypes::LIVEBLOG_POST_TYPE, [ $this, 'save_liveblog' ], 10, 2 );
+		add_action( 'save_post_' . PostTypes::BLOGGING_LIVE_POST_TYPE, [ $this, 'save_blogging_live' ], 10, 2 );
 		add_action( 'save_post_' . PostTypes::ENTRY_POST_TYPE, [ $this, 'save_entry' ], 10, 2 );
-		add_filter( 'manage_' . PostTypes::LIVEBLOG_POST_TYPE . '_posts_columns', [ $this, 'blogging_live_columns' ] );
-		add_action( 'manage_' . PostTypes::LIVEBLOG_POST_TYPE . '_posts_custom_column', [ $this, 'render_blogging_live_column' ], 10, 2 );
+		add_filter( 'manage_' . PostTypes::BLOGGING_LIVE_POST_TYPE . '_posts_columns', [ $this, 'blogging_live_columns' ] );
+		add_action( 'manage_' . PostTypes::BLOGGING_LIVE_POST_TYPE . '_posts_custom_column', [ $this, 'render_blogging_live_column' ], 10, 2 );
 		add_filter( 'manage_' . PostTypes::ENTRY_POST_TYPE . '_posts_columns', [ $this, 'entry_columns' ] );
 		add_action( 'manage_' . PostTypes::ENTRY_POST_TYPE . '_posts_custom_column', [ $this, 'render_entry_column' ], 10, 2 );
 		add_filter( 'post_updated_messages', [ $this, 'messages' ] );
@@ -38,7 +38,7 @@ final class Admin implements Feature {
 		foreach ( PostTypes::host_post_types() as $post_type ) {
 			add_meta_box(
 				'blogging-live-host',
-				__( 'Liveblog', 'blogging-live' ),
+				__( 'Blogging Live', 'blogging-live' ),
 				[ $this, 'render_host_box' ],
 				$post_type,
 				'side',
@@ -48,9 +48,9 @@ final class Admin implements Feature {
 
 		add_meta_box(
 			'blogging-live-settings',
-			__( 'Liveblog details', 'blogging-live' ),
+			__( 'Blogging Live details', 'blogging-live' ),
 			[ $this, 'render_blogging_live_box' ],
-			PostTypes::LIVEBLOG_POST_TYPE,
+			PostTypes::BLOGGING_LIVE_POST_TYPE,
 			'side',
 			'high'
 		);
@@ -66,27 +66,27 @@ final class Admin implements Feature {
 	}
 
 	public function render_host_box( WP_Post $post ): void {
-		$enabled  = (bool) get_post_meta( $post->ID, '_blogging_live_enabled', true );
-		$liveblog = $this->liveblogs->find_for_host( $post->ID );
+		$enabled       = (bool) get_post_meta( $post->ID, '_blogging_live_enabled', true );
+		$blogging_live = $this->blogging_lives->find_for_host( $post->ID );
 		wp_nonce_field( 'blogging_live_save_host', 'blogging_live_host_nonce' );
 		?>
 		<p>
 			<label>
 				<input type="checkbox" name="blogging_live_enabled" value="1" <?php checked( $enabled ); ?>>
-				<?php esc_html_e( 'Enable liveblogging for this content', 'blogging-live' ); ?>
+				<?php esc_html_e( 'Enable Blogging Live for this content', 'blogging-live' ); ?>
 			</label>
 		</p>
-		<?php if ( $liveblog ) : ?>
+		<?php if ( $blogging_live ) : ?>
 			<p>
-				<a class="button button-secondary" href="<?php echo esc_url( get_edit_post_link( $liveblog->ID ) ?? '' ); ?>">
-					<?php esc_html_e( 'Manage liveblog', 'blogging-live' ); ?>
+				<a class="button button-secondary" href="<?php echo esc_url( get_edit_post_link( $blogging_live->ID ) ?? '' ); ?>">
+					<?php esc_html_e( 'Manage Blogging Live', 'blogging-live' ); ?>
 				</a>
-				<a class="button button-secondary" href="<?php echo esc_url( $this->new_entry_url( $liveblog->ID ) ); ?>">
+				<a class="button button-secondary" href="<?php echo esc_url( $this->new_entry_url( $blogging_live->ID ) ); ?>">
 					<?php esc_html_e( 'Add update', 'blogging-live' ); ?>
 				</a>
 			</p>
 		<?php else : ?>
-			<p class="description"><?php esc_html_e( 'A liveblog container will be created when this post is saved.', 'blogging-live' ); ?></p>
+			<p class="description"><?php esc_html_e( 'A Blogging Live container will be created when this post is saved.', 'blogging-live' ); ?></p>
 		<?php endif; ?>
 		<?php
 	}
@@ -100,7 +100,7 @@ final class Admin implements Feature {
 		$host_id     = absint( $post->post_parent );
 		$start       = $this->utc_to_local_input( (string) get_post_meta( $post->ID, '_blogging_live_start_gmt', true ) );
 		$end         = $this->utc_to_local_input( (string) get_post_meta( $post->ID, '_blogging_live_end_gmt', true ) );
-		wp_nonce_field( 'blogging_live_save_liveblog', 'blogging_live_blogging_live_nonce' );
+		wp_nonce_field( 'blogging_live_save_container', 'blogging_live_container_nonce' );
 		?>
 		<p>
 			<label for="blogging-live-status"><strong><?php esc_html_e( 'Event status', 'blogging-live' ); ?></strong></label><br>
@@ -133,7 +133,7 @@ final class Admin implements Feature {
 		<?php if ( $host_id ) : ?>
 			<p><a href="<?php echo esc_url( get_edit_post_link( $host_id ) ?? '' ); ?>"><?php esc_html_e( 'Edit host content', 'blogging-live' ); ?></a></p>
 		<?php endif; ?>
-		<p><a class="button button-primary" href="<?php echo esc_url( $this->new_entry_url( $post->ID ) ); ?>"><?php esc_html_e( 'Add liveblog update', 'blogging-live' ); ?></a></p>
+		<p><a class="button button-primary" href="<?php echo esc_url( $this->new_entry_url( $post->ID ) ); ?>"><?php esc_html_e( 'Add Blogging Live update', 'blogging-live' ); ?></a></p>
 		<?php
 	}
 
@@ -143,9 +143,9 @@ final class Admin implements Feature {
 			$selected_id = absint( wp_unslash( $_GET['blogging_live_id'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		}
 
-		$liveblogs = get_posts(
+		$blogging_lives = get_posts(
 			[
-				'post_type'        => PostTypes::LIVEBLOG_POST_TYPE,
+				'post_type'        => PostTypes::BLOGGING_LIVE_POST_TYPE,
 				'post_status'      => [ 'publish', 'draft', 'private', 'pending', 'future' ],
 				'posts_per_page'   => 100,
 				'orderby'          => 'modified',
@@ -157,12 +157,12 @@ final class Admin implements Feature {
 		wp_nonce_field( 'blogging_live_save_entry', 'blogging_live_entry_nonce' );
 		?>
 		<p>
-			<label for="blogging-live-parent"><strong><?php esc_html_e( 'Liveblog', 'blogging-live' ); ?></strong></label><br>
+			<label for="blogging-live-parent"><strong><?php esc_html_e( 'Blogging Live', 'blogging-live' ); ?></strong></label><br>
 			<select class="widefat" id="blogging-live-parent" name="blogging_live_parent" required>
-				<option value=""><?php esc_html_e( 'Select a liveblog', 'blogging-live' ); ?></option>
-				<?php foreach ( $liveblogs as $liveblog ) : ?>
-					<option value="<?php echo esc_attr( (string) $liveblog->ID ); ?>" <?php selected( $selected_id, $liveblog->ID ); ?>>
-						<?php echo esc_html( $liveblog->post_title ); ?>
+				<option value=""><?php esc_html_e( 'Select a Blogging Live', 'blogging-live' ); ?></option>
+				<?php foreach ( $blogging_lives as $blogging_live ) : ?>
+					<option value="<?php echo esc_attr( (string) $blogging_live->ID ); ?>" <?php selected( $selected_id, $blogging_live->ID ); ?>>
+						<?php echo esc_html( $blogging_live->post_title ); ?>
 					</option>
 				<?php endforeach; ?>
 			</select>
@@ -186,7 +186,7 @@ final class Admin implements Feature {
 		update_post_meta( $post_id, '_blogging_live_enabled', $enabled );
 
 		if ( $enabled && current_user_can( 'create_blogging_lives' ) ) {
-			$blogging_live_id = $this->liveblogs->create_for_host( $post_id );
+			$blogging_live_id = $this->blogging_lives->create_for_host( $post_id );
 			if ( ! is_wp_error( $blogging_live_id ) && 'publish' === $post->post_status && 'publish' !== get_post_status( $blogging_live_id ) ) {
 				wp_update_post(
 					[
@@ -198,10 +198,10 @@ final class Admin implements Feature {
 		}
 	}
 
-	public function save_liveblog( int $post_id, WP_Post $post ): void {
+	public function save_blogging_live( int $post_id, WP_Post $post ): void {
 		unset( $post );
 
-		if ( ! $this->can_save( $post_id, 'blogging_live_blogging_live_nonce', 'blogging_live_save_liveblog' ) ) {
+		if ( ! $this->can_save( $post_id, 'blogging_live_container_nonce', 'blogging_live_save_container' ) ) {
 			return;
 		}
 
@@ -223,7 +223,7 @@ final class Admin implements Feature {
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Verified by can_save() above.
 		$parent_id = absint( $_POST['blogging_live_parent'] ?? 0 );
-		if ( $parent_id && $this->liveblogs->find( $parent_id ) && absint( $post->post_parent ) !== $parent_id ) {
+		if ( $parent_id && $this->blogging_lives->find( $parent_id ) && absint( $post->post_parent ) !== $parent_id ) {
 			$this->updating_entry_parent = true;
 			wp_update_post(
 				[
@@ -260,7 +260,7 @@ final class Admin implements Feature {
 		}
 
 		if ( 'blogging_live_host' === $column ) {
-			$host_id = $this->liveblogs->host_id( $post_id );
+			$host_id = $this->blogging_lives->host_id( $post_id );
 			echo $host_id ? '<a href="' . esc_url( get_edit_post_link( $host_id ) ?? '' ) . '">' . esc_html( get_the_title( $host_id ) ) . '</a>' : '&mdash;';
 		}
 	}
@@ -270,7 +270,7 @@ final class Admin implements Feature {
 	 * @return array<string, string>
 	 */
 	public function entry_columns( array $columns ): array {
-		$columns['blogging_live_parent'] = __( 'Liveblog', 'blogging-live' );
+		$columns['blogging_live_parent'] = __( 'Blogging Live', 'blogging-live' );
 		$columns['blogging_live_flags']  = __( 'Flags', 'blogging-live' );
 		return $columns;
 	}
@@ -300,8 +300,8 @@ final class Admin implements Feature {
 	 * @return array<string, array<int, string>>
 	 */
 	public function messages( array $messages ): array {
-		$messages[ PostTypes::ENTRY_POST_TYPE ][1]    = __( 'Liveblog update saved.', 'blogging-live' );
-		$messages[ PostTypes::LIVEBLOG_POST_TYPE ][1] = __( 'Liveblog saved.', 'blogging-live' );
+		$messages[ PostTypes::ENTRY_POST_TYPE ][1]         = __( 'Blogging Live update saved.', 'blogging-live' );
+		$messages[ PostTypes::BLOGGING_LIVE_POST_TYPE ][1] = __( 'Blogging Live saved.', 'blogging-live' );
 		return $messages;
 	}
 

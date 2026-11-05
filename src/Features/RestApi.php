@@ -1,6 +1,6 @@
 <?php
 /**
- * Public liveblog REST feed.
+ * Public Blogging Live REST feed.
  *
  * @package BloggingLive
  */
@@ -12,7 +12,7 @@ namespace BloggingLive\Features;
 use BloggingLive\EntryPresenter;
 use BloggingLive\Feature;
 use BloggingLive\Repositories\EntryRepository;
-use BloggingLive\Repositories\LiveblogRepository;
+use BloggingLive\Repositories\BloggingLiveRepository;
 use BloggingLive\Templates\TemplateLoader;
 use WP_Error;
 use WP_Post;
@@ -26,7 +26,7 @@ final class RestApi implements Feature {
 	private const NAMESPACE = 'blogging-live/v1';
 
 	public function __construct(
-		private readonly LiveblogRepository $liveblogs,
+		private readonly BloggingLiveRepository $blogging_lives,
 		private readonly EntryRepository $entries,
 		private readonly TemplateLoader $templates,
 		private readonly EntryPresenter $presenter
@@ -39,11 +39,11 @@ final class RestApi implements Feature {
 	public function register_routes(): void {
 		register_rest_route(
 			self::NAMESPACE,
-			'/liveblogs/(?P<id>\d+)',
+			'/blogging-lives/(?P<id>\d+)',
 			[
 				'methods'             => WP_REST_Server::READABLE,
-				'callback'            => [ $this, 'get_liveblog' ],
-				'permission_callback' => [ $this, 'can_read_liveblog' ],
+				'callback'            => [ $this, 'get_blogging_live' ],
+				'permission_callback' => [ $this, 'can_read_blogging_live' ],
 				'args'                => [
 					'id' => [
 						'type'              => 'integer',
@@ -56,11 +56,11 @@ final class RestApi implements Feature {
 
 		register_rest_route(
 			self::NAMESPACE,
-			'/liveblogs/(?P<id>\d+)/entries',
+			'/blogging-lives/(?P<id>\d+)/entries',
 			[
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => [ $this, 'get_entries' ],
-				'permission_callback' => [ $this, 'can_read_liveblog' ],
+				'permission_callback' => [ $this, 'can_read_blogging_live' ],
 				'args'                => [
 					'id'       => [
 						'type'              => 'integer',
@@ -88,7 +88,7 @@ final class RestApi implements Feature {
 
 		register_rest_route(
 			self::NAMESPACE,
-			'/posts/(?P<post_id>\d+)/liveblog',
+			'/posts/(?P<post_id>\d+)/blogging-live',
 			[
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => [ $this, 'get_for_post' ],
@@ -104,29 +104,29 @@ final class RestApi implements Feature {
 		);
 	}
 
-	public function can_read_liveblog( WP_REST_Request $request ): bool {
+	public function can_read_blogging_live( WP_REST_Request $request ): bool {
 		$blogging_live_id = absint( $request['id'] );
-		return $this->liveblogs->is_public( $blogging_live_id ) || current_user_can( 'read_post', $blogging_live_id );
+		return $this->blogging_lives->is_public( $blogging_live_id ) || current_user_can( 'read_post', $blogging_live_id );
 	}
 
 	public function get_for_post( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$post_id  = absint( $request['post_id'] );
-		$liveblog = $this->liveblogs->find_for_host( $post_id );
+		$post_id       = absint( $request['post_id'] );
+		$blogging_live = $this->blogging_lives->find_for_host( $post_id );
 
-		if ( ! $liveblog || ( ! $this->liveblogs->is_public( $liveblog->ID ) && ! current_user_can( 'read_post', $liveblog->ID ) ) ) {
-			return new WP_Error( 'blogging_live_not_found', __( 'No public liveblog was found for this post.', 'blogging-live' ), [ 'status' => 404 ] );
+		if ( ! $blogging_live || ( ! $this->blogging_lives->is_public( $blogging_live->ID ) && ! current_user_can( 'read_post', $blogging_live->ID ) ) ) {
+			return new WP_Error( 'blogging_live_not_found', __( 'No public Blogging Live was found for this post.', 'blogging-live' ), [ 'status' => 404 ] );
 		}
 
-		return $this->blogging_live_response( $liveblog );
+		return $this->blogging_live_response( $blogging_live );
 	}
 
-	public function get_liveblog( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$liveblog = $this->liveblogs->find( absint( $request['id'] ) );
-		if ( ! $liveblog ) {
-			return new WP_Error( 'blogging_live_not_found', __( 'Liveblog not found.', 'blogging-live' ), [ 'status' => 404 ] );
+	public function get_blogging_live( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$blogging_live = $this->blogging_lives->find( absint( $request['id'] ) );
+		if ( ! $blogging_live ) {
+			return new WP_Error( 'blogging_live_not_found', __( 'Blogging Live not found.', 'blogging-live' ), [ 'status' => 404 ] );
 		}
 
-		return $this->blogging_live_response( $liveblog );
+		return $this->blogging_live_response( $blogging_live );
 	}
 
 	public function get_entries( WP_REST_Request $request ): WP_REST_Response|WP_Error {
@@ -137,7 +137,7 @@ final class RestApi implements Feature {
 		$before = (string) $request->get_param( 'before' );
 		$after  = (string) $request->get_param( 'after' );
 		if ( ! $this->entries->is_valid_cursor( $before ) || ! $this->entries->is_valid_cursor( $after ) ) {
-			return new WP_Error( 'blogging_live_invalid_cursor', __( 'The supplied liveblog cursor is invalid.', 'blogging-live' ), [ 'status' => 400 ] );
+			return new WP_Error( 'blogging_live_invalid_cursor', __( 'The supplied Blogging Live cursor is invalid.', 'blogging-live' ), [ 'status' => 400 ] );
 		}
 
 		$blogging_live_id = absint( $request['id'] );
@@ -177,28 +177,28 @@ final class RestApi implements Feature {
 		}
 
 		$response->header( 'ETag', $etag );
-		$response->header( 'Cache-Control', $this->liveblogs->is_public( $blogging_live_id ) ? 'public, max-age=5, stale-while-revalidate=30' : 'private, no-store' );
+		$response->header( 'Cache-Control', $this->blogging_lives->is_public( $blogging_live_id ) ? 'public, max-age=5, stale-while-revalidate=30' : 'private, no-store' );
 
 		return $response;
 	}
 
-	private function blogging_live_response( WP_Post $liveblog ): WP_REST_Response {
-		$host_id  = $this->liveblogs->host_id( $liveblog->ID );
-		$status   = (string) get_post_meta( $liveblog->ID, '_blogging_live_status', true );
+	private function blogging_live_response( WP_Post $blogging_live ): WP_REST_Response {
+		$host_id  = $this->blogging_lives->host_id( $blogging_live->ID );
+		$status   = (string) get_post_meta( $blogging_live->ID, '_blogging_live_status', true );
 		$response = new WP_REST_Response(
 			[
-				'id'                 => $liveblog->ID,
+				'id'                 => $blogging_live->ID,
 				'host_id'            => $host_id,
-				'title'              => get_the_title( $liveblog ),
+				'title'              => get_the_title( $blogging_live ),
 				'status'             => $status ? $status : 'scheduled',
-				'coverage_start_gmt' => (string) get_post_meta( $liveblog->ID, '_blogging_live_start_gmt', true ),
-				'coverage_end_gmt'   => (string) get_post_meta( $liveblog->ID, '_blogging_live_end_gmt', true ),
-				'last_updated_gmt'   => (string) get_post_meta( $liveblog->ID, '_blogging_live_last_updated_gmt', true ),
+				'coverage_start_gmt' => (string) get_post_meta( $blogging_live->ID, '_blogging_live_start_gmt', true ),
+				'coverage_end_gmt'   => (string) get_post_meta( $blogging_live->ID, '_blogging_live_end_gmt', true ),
+				'last_updated_gmt'   => (string) get_post_meta( $blogging_live->ID, '_blogging_live_last_updated_gmt', true ),
 				'host_url'           => $host_id ? get_permalink( $host_id ) : '',
-				'entries_url'        => rest_url( self::NAMESPACE . '/liveblogs/' . $liveblog->ID . '/entries' ),
+				'entries_url'        => rest_url( self::NAMESPACE . '/blogging-lives/' . $blogging_live->ID . '/entries' ),
 			]
 		);
-		$response->header( 'Cache-Control', $this->liveblogs->is_public( $liveblog->ID ) ? 'public, max-age=10, stale-while-revalidate=60' : 'private, no-store' );
+		$response->header( 'Cache-Control', $this->blogging_lives->is_public( $blogging_live->ID ) ? 'public, max-age=10, stale-while-revalidate=60' : 'private, no-store' );
 		return $response;
 	}
 

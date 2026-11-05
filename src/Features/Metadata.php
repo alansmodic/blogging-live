@@ -25,13 +25,13 @@ final class Metadata implements Feature {
 			$this->register_scalar( $post_type, '_blogging_live_last_updated_gmt', 'string', '' );
 		}
 
-		$this->register_scalar( PostTypes::LIVEBLOG_POST_TYPE, '_blogging_live_status', 'string', 'scheduled' );
-		$this->register_scalar( PostTypes::LIVEBLOG_POST_TYPE, '_blogging_live_start_gmt', 'string', '' );
-		$this->register_scalar( PostTypes::LIVEBLOG_POST_TYPE, '_blogging_live_end_gmt', 'string', '' );
-		$this->register_scalar( PostTypes::LIVEBLOG_POST_TYPE, '_blogging_live_last_updated_gmt', 'string', '' );
-		$this->register_scalar( PostTypes::LIVEBLOG_POST_TYPE, '_blogging_live_refresh_interval', 'integer', 0 );
-		$this->register_scalar( PostTypes::LIVEBLOG_POST_TYPE, '_blogging_live_order', 'string', 'desc' );
-		$this->register_scalar( PostTypes::LIVEBLOG_POST_TYPE, '_blogging_live_cache_generation', 'integer', 1, false );
+		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_status', 'string', 'scheduled' );
+		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_start_gmt', 'string', '' );
+		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_end_gmt', 'string', '' );
+		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_last_updated_gmt', 'string', '' );
+		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_refresh_interval', 'integer', 0 );
+		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_order', 'string', 'desc' );
+		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_cache_generation', 'integer', 1, false );
 
 		$this->register_scalar( PostTypes::ENTRY_POST_TYPE, '_blogging_live_is_pinned', 'boolean', false );
 		$this->register_scalar( PostTypes::ENTRY_POST_TYPE, '_blogging_live_is_key_event', 'boolean', false );
