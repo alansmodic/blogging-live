@@ -5,9 +5,13 @@
 	<file>src</file>
 	<file>templates</file>
 	<file>blocks</file>
+	<file>uninstall.php</file>
 	<exclude-pattern>vendor/*</exclude-pattern>
 	<arg name="extensions" value="php" />
 	<arg value="sp" />
+	<config name="testVersion" value="8.1-" />
+	<rule ref="PHPCompatibilityWP" />
+	<rule ref="WordPress-VIP-Go" />
 	<rule ref="WordPress">
 		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase" />
 		<exclude name="WordPress.Files.FileName.InvalidClassFileName" />

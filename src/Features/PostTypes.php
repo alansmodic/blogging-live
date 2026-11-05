@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace BloggingLive\Features;
 
 use BloggingLive\Feature;
+use BloggingLive\Rest\PostsController;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -25,40 +26,42 @@ final class PostTypes implements Feature {
 		register_post_type(
 			self::BLOGGING_LIVE_POST_TYPE,
 			[
-				'labels'              => self::blogging_live_labels(),
-				'public'              => false,
-				'publicly_queryable'  => false,
-				'show_ui'             => true,
-				'show_in_menu'        => true,
-				'show_in_rest'        => true,
-				'menu_icon'           => 'dashicons-megaphone',
-				'menu_position'       => 21,
-				'supports'            => [ 'title', 'revisions' ],
-				'capability_type'     => [ 'blogging_live', 'blogging_lives' ],
-				'capabilities'        => [ 'create_posts' => 'do_not_allow' ],
-				'map_meta_cap'        => true,
-				'has_archive'         => false,
-				'exclude_from_search' => true,
-				'rewrite'             => false,
+				'labels'                => self::blogging_live_labels(),
+				'public'                => false,
+				'publicly_queryable'    => false,
+				'show_ui'               => true,
+				'show_in_menu'          => true,
+				'show_in_rest'          => true,
+				'rest_controller_class' => PostsController::class,
+				'menu_icon'             => 'dashicons-megaphone',
+				'menu_position'         => 21,
+				'supports'              => [ 'title', 'revisions' ],
+				'capability_type'       => [ 'blogging_live', 'blogging_lives' ],
+				'capabilities'          => [ 'create_posts' => 'do_not_allow' ],
+				'map_meta_cap'          => true,
+				'has_archive'           => false,
+				'exclude_from_search'   => true,
+				'rewrite'               => false,
 			]
 		);
 
 		register_post_type(
 			self::ENTRY_POST_TYPE,
 			[
-				'labels'              => self::entry_labels(),
-				'public'              => false,
-				'publicly_queryable'  => false,
-				'show_ui'             => true,
-				'show_in_menu'        => 'edit.php?post_type=' . self::BLOGGING_LIVE_POST_TYPE,
-				'show_in_rest'        => true,
-				'supports'            => [ 'title', 'editor', 'author', 'revisions', 'thumbnail' ],
-				'capability_type'     => [ 'blogging_live_entry', 'blogging_live_entries' ],
-				'map_meta_cap'        => true,
-				'has_archive'         => false,
-				'exclude_from_search' => true,
-				'rewrite'             => false,
-				'template'            => [ [ 'core/paragraph' ] ],
+				'labels'                => self::entry_labels(),
+				'public'                => false,
+				'publicly_queryable'    => false,
+				'show_ui'               => true,
+				'show_in_menu'          => 'edit.php?post_type=' . self::BLOGGING_LIVE_POST_TYPE,
+				'show_in_rest'          => true,
+				'rest_controller_class' => PostsController::class,
+				'supports'              => [ 'title', 'editor', 'author', 'revisions', 'thumbnail', 'custom-fields' ],
+				'capability_type'       => [ 'blogging_live_entry', 'blogging_live_entries' ],
+				'map_meta_cap'          => true,
+				'has_archive'           => false,
+				'exclude_from_search'   => true,
+				'rewrite'               => false,
+				'template'              => [ [ 'core/paragraph' ] ],
 			]
 		);
 	}

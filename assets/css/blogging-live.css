@@ -43,9 +43,18 @@
 	color: #fff;
 }
 
-.blogging-live__entries {
+.blogging-live__entries,
+.blogging-live__pinned {
 	display: grid;
 	gap: 1rem;
+}
+
+.blogging-live__pinned {
+	margin-bottom: 1.5rem;
+}
+
+.blogging-live__pinned[hidden] {
+	display: none;
 }
 
 .blogging-live-entry {

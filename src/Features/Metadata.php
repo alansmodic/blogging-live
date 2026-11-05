@@ -19,23 +19,25 @@ final class Metadata implements Feature {
 	}
 
 	public function register_meta(): void {
+		// Values the plugin maintains are not exposed to REST clients, so they
+		// cannot be overwritten by an editor save; the block editor reads the
+		// container ID from the read-only blogging_live_id REST field instead.
 		foreach ( PostTypes::host_post_types() as $post_type ) {
 			$this->register_scalar( $post_type, '_blogging_live_enabled', 'boolean', false );
-			$this->register_scalar( $post_type, '_blogging_live_id', 'integer', 0 );
-			$this->register_scalar( $post_type, '_blogging_live_last_updated_gmt', 'string', '' );
+			$this->register_scalar( $post_type, '_blogging_live_id', 'integer', 0, false );
+			$this->register_scalar( $post_type, '_blogging_live_last_updated_gmt', 'string', '', false );
 		}
 
 		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_status', 'string', 'scheduled' );
 		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_start_gmt', 'string', '' );
 		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_end_gmt', 'string', '' );
-		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_last_updated_gmt', 'string', '' );
+		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_last_updated_gmt', 'string', '', false );
 		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_refresh_interval', 'integer', 0 );
 		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_order', 'string', 'desc' );
 		$this->register_scalar( PostTypes::BLOGGING_LIVE_POST_TYPE, '_blogging_live_cache_generation', 'integer', 1, false );
 
 		$this->register_scalar( PostTypes::ENTRY_POST_TYPE, '_blogging_live_is_pinned', 'boolean', false );
 		$this->register_scalar( PostTypes::ENTRY_POST_TYPE, '_blogging_live_is_key_event', 'boolean', false );
-		$this->register_scalar( PostTypes::ENTRY_POST_TYPE, '_blogging_live_sort_timestamp', 'integer', 0 );
 
 		register_post_meta(
 			PostTypes::ENTRY_POST_TYPE,

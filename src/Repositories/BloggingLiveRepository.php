@@ -118,4 +118,27 @@ final class BloggingLiveRepository {
 			&& 'publish' === get_post_status( $host_id )
 			&& (bool) get_post_meta( $host_id, '_blogging_live_enabled', true );
 	}
+
+	public function status( int $blogging_live_id ): string {
+		$status = (string) get_post_meta( $blogging_live_id, '_blogging_live_status', true );
+		return array_key_exists( $status, self::status_labels() ) ? $status : 'scheduled';
+	}
+
+	/**
+	 * @return array<string, string>
+	 */
+	public static function status_labels(): array {
+		return [
+			'scheduled' => __( 'Scheduled', 'blogging-live' ),
+			'live'      => __( 'Live', 'blogging-live' ),
+			'ended'     => __( 'Ended', 'blogging-live' ),
+		];
+	}
+
+	/**
+	 * Whether the current user may see a Blogging Live and its published entries.
+	 */
+	public function can_view( int $blogging_live_id ): bool {
+		return $this->is_public( $blogging_live_id ) || current_user_can( 'edit_post', $blogging_live_id );
+	}
 }

@@ -15,6 +15,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Assets implements Feature {
 	private static bool $localized = false;
+
 	public function register(): void {
 		add_action( 'init', [ self::class, 'register_assets' ], 5 );
 		add_action( 'wp_enqueue_scripts', [ self::class, 'maybe_enqueue' ], 20 );
@@ -66,20 +67,24 @@ final class Assets implements Feature {
 		wp_enqueue_script( 'blogging-live' );
 
 		if ( ! self::$localized ) {
-			wp_localize_script(
-				'blogging-live',
-				'BloggingLiveSettings',
-				[
-					'strings' => [
-						'oneNewUpdate'   => __( '1 new update', 'blogging-live' ),
-						/* translators: %d: Number of new Blogging Live updates. */
-						'manyNewUpdates' => __( '%d new updates', 'blogging-live' ),
-						'loading'        => __( 'Loading updates…', 'blogging-live' ),
-						'none'           => __( 'No additional updates.', 'blogging-live' ),
-						'error'          => __( 'Updates could not be loaded. Please try again.', 'blogging-live' ),
-					],
-				]
-			);
+			$settings = [
+				'strings' => [
+					'oneNewUpdate'   => __( '1 new update', 'blogging-live' ),
+					/* translators: %d: Number of new Blogging Live updates. */
+					'manyNewUpdates' => __( '%d new updates', 'blogging-live' ),
+					'loading'        => __( 'Loading updates…', 'blogging-live' ),
+					'none'           => __( 'No additional updates.', 'blogging-live' ),
+					'error'          => __( 'Updates could not be loaded. Please try again.', 'blogging-live' ),
+				],
+			];
+
+			// Lets editors poll draft and private coverage. Logged-out pages are
+			// edge-cached, so they never carry a nonce that could expire in the cache.
+			if ( is_user_logged_in() ) {
+				$settings['nonce'] = wp_create_nonce( 'wp_rest' );
+			}
+
+			wp_add_inline_script( 'blogging-live', 'window.BloggingLiveSettings = ' . wp_json_encode( $settings ) . ';', 'before' );
 			self::$localized = true;
 		}
 	}

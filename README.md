@@ -62,8 +62,12 @@ You can also download the repository as a ZIP, upload it through **Plugins → A
 1. Edit a public post, page, or supported custom post type.
 2. Select **Enable Blogging Live for this content** in the Blogging Live panel and save.
 3. Choose **Manage Blogging Live** to set the event status, coverage dates, display order, and polling interval.
-4. Choose **Add update** to create entries in the block editor.
-5. Publish entries as coverage develops.
+4. Choose **Add update** to create entries in the block editor. The update is already assigned to that Blogging Live; you can change it in the **Update details** panel.
+5. Publish entries as coverage develops. Use **Pin this update** to keep an entry in the pinned section above the feed.
+
+Updates must belong to a Blogging Live before they can be published; an update without one is saved as a draft.
+
+Capabilities are granted to administrators and editors the first time the plugin loads on each site, so the plugin also works when it is loaded from code (as on WordPress VIP) or network-activated, where activation hooks do not run. Filter `blogging_live_capability_roles` to change the roles.
 
 The feed is appended to enabled host content by default. Turn off automatic placement under **Blogging Live → Settings** when using the block or shortcode instead.
 
@@ -71,8 +75,11 @@ The feed is appended to enabled host content by default. Turn off automatic plac
 
 The first page of entries is rendered in PHP, so the feed remains readable and indexable without JavaScript. The browser script progressively adds:
 
-- polling while the event status is `live`;
+- polling while the event status is `live`, and a slower status check while it is `scheduled`, so readers who opened the page early start receiving updates when the event goes live; polling stops when the event ends;
 - a notification when newer entries are available;
+- in-place updates when entries are edited, pinned, unpublished, or deleted;
+- re-running scripts in newly inserted entries, so embeds initialize;
+- pausing while the browser tab is hidden;
 - on-demand loading of older entries;
 - DOM events that integrations can observe.
 
@@ -112,11 +119,17 @@ Entry feed parameters:
 
 - `per_page`: return 1–50 entries;
 - `before`: return entries older than the supplied cursor;
-- `after`: return entries newer than the supplied cursor.
+- `after`: return entries newer than the supplied cursor;
+- `since`: a GMT time (`Y-m-d H:i:s`) from a previous response's `server_time`; adds `updated` (entries edited since then) and `removed` (IDs of entries unpublished, moved, or deleted since then);
+- `pinned`: return only pinned entries.
+
+Responses also include the event `status`, its translated `status_label`, and `server_time`.
 
 Cursors combine an entry's publication time and post ID. This avoids the gaps and duplicate results that offset pagination can produce while new entries are being published.
 
-Feed responses contain normalized entry data and rendered HTML, allowing the default reader and alternative front ends to consume the same contract. Public responses receive short cache headers; private and draft Blogging Lives require an authenticated user who can read the container and return `private, no-store`.
+Feed responses contain normalized entry data and rendered HTML, allowing the default reader and alternative front ends to consume the same contract. Public responses receive short cache headers; private and draft Blogging Lives require an authenticated user who can edit the container and return `private, no-store`. Entry content is returned rendered only; raw block markup is not exposed.
+
+The core `wp/v2` endpoints for containers and entries apply the same rule: a published entry is only visible to readers while its host post is published and has Blogging Live enabled, so updates prepared under an unpublished article stay private.
 
 ## Architecture
 
@@ -127,8 +140,9 @@ The plugin is composed as a small set of features coordinated by `BloggingLive\P
 | `PostTypes` | Registers Blogging Live containers and update post types |
 | `Metadata` | Registers host, container, and entry metadata |
 | `Capabilities` | Installs and removes editorial capabilities |
-| `Admin` | Adds editorial panels, save handlers, and list-table columns |
-| `Lifecycle` | Reacts to entry and host changes, updates timestamps, and invalidates caches |
+| `Admin` | Adds classic-editor meta boxes, save handlers, and list-table columns |
+| `Editor` | Adds block-editor sidebar panels and the REST fields they use |
+| `Lifecycle` | Reacts to entry and host changes, updates timestamps, records removals, and invalidates caches |
 | `EntryRepository` | Queries ordered entry feeds and manages cursors |
 | `BloggingLiveRepository` | Resolves and creates host/container relationships |
 | `Frontend` | Coordinates server rendering, automatic placement, and shortcodes |
@@ -148,7 +162,7 @@ your-theme/blogging-live/blogging-live.php
 your-theme/blogging-live/entry.php
 ```
 
-Templates receive the normalized data used by the REST API. Default CSS uses `blogging-live` and `blogging-live-entry` class prefixes so a theme can safely restyle the output.
+Templates receive the normalized data used by the REST API. The entry template is also used for the pinned section; its `$data['context']` is `'pinned'` there and `'feed'` in the feed. Default CSS uses `blogging-live` and `blogging-live-entry` class prefixes so a theme can safely restyle the output.
 
 ## Extension points
 
@@ -166,6 +180,9 @@ The browser emits:
 
 ```text
 blogging-live:entries-added
+blogging-live:entries-updated
+blogging-live:entries-removed
+blogging-live:status-changed
 blogging-live:error
 ```
 
@@ -173,7 +190,9 @@ Use `blogging_live_cache_invalidated` to connect edge-cache purging, and filter 
 
 ## Caching behavior
 
-Entry queries use generation-based object-cache keys. Publishing, editing, unpublishing, or deleting an entry increments the parent container's generation. New requests immediately move to a fresh cache namespace while old keys expire naturally.
+Entry queries use generation-based object-cache keys. Publishing, editing, unpublishing, or deleting an entry increments the parent container's generation once per change. New requests immediately move to a fresh cache namespace while old keys expire naturally.
+
+When an entry changes, the host post's modified time is updated directly and its post cache is cleared, rather than re-saving the host. This avoids re-running content sanitization on the host and firing `save_post` integrations for every update. Disable it with the **Update the host post modified time** setting or the `blogging_live_touch_host_post` filter.
 
 This keeps invalidation deterministic without requiring a particular persistent object cache, CDN, or hosting provider.
 
@@ -206,10 +225,19 @@ composer lint
 composer test
 ```
 
+`composer lint` checks the WordPress, WordPress VIP (`WordPress-VIP-Go`), and PHP 8.1+ compatibility standards.
+
 The PHPUnit suite expects the standard WordPress test library through `WP_TESTS_DIR`:
 
 ```bash
 WP_TESTS_DIR=/path/to/wordpress-tests-lib composer test
+```
+
+With Docker, [`@wordpress/env`](https://www.npmjs.com/package/@wordpress/env) provides one:
+
+```bash
+npx @wordpress/env start
+npx @wordpress/env run tests-cli --env-cwd=wp-content/plugins/blogging-live vendor/bin/phpunit
 ```
 
 The plugin follows WordPress security conventions: registered and sanitized metadata, nonce-protected editorial saves, capability checks, escaped templates, and permission callbacks on REST routes.

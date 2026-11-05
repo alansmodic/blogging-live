@@ -14,6 +14,7 @@ use BloggingLive\Features\Assets;
 use BloggingLive\Features\Blocks;
 use BloggingLive\Features\Cache;
 use BloggingLive\Features\Capabilities;
+use BloggingLive\Features\Editor;
 use BloggingLive\Features\Frontend;
 use BloggingLive\Features\Lifecycle;
 use BloggingLive\Features\Metadata;
@@ -63,10 +64,11 @@ final class Plugin {
 			$cache,
 			new Lifecycle( $blogging_lives, $entries, $cache ),
 			new Admin( $blogging_lives ),
+			new Editor( $blogging_lives ),
 			new Assets(),
 			$frontend,
 			new Blocks( $frontend ),
-			new RestApi( $blogging_lives, $entries, $templates, $presenter ),
+			new RestApi( $blogging_lives, $entries, $frontend ),
 			new Seo( $blogging_lives, $entries, $presenter ),
 		];
 

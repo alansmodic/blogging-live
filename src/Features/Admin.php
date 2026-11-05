@@ -18,8 +18,6 @@ use WP_Post;
 defined( 'ABSPATH' ) || exit;
 
 final class Admin implements Feature {
-	private bool $updating_entry_parent = false;
-
 	public function __construct( private readonly BloggingLiveRepository $blogging_lives ) {}
 
 	public function register(): void {
@@ -27,6 +25,7 @@ final class Admin implements Feature {
 		add_action( 'save_post', [ $this, 'save_host' ], 10, 2 );
 		add_action( 'save_post_' . PostTypes::BLOGGING_LIVE_POST_TYPE, [ $this, 'save_blogging_live' ], 10, 2 );
 		add_action( 'save_post_' . PostTypes::ENTRY_POST_TYPE, [ $this, 'save_entry' ], 10, 2 );
+		add_filter( 'wp_insert_post_data', [ $this, 'entry_post_data' ], 10, 2 );
 		add_filter( 'manage_' . PostTypes::BLOGGING_LIVE_POST_TYPE . '_posts_columns', [ $this, 'blogging_live_columns' ] );
 		add_action( 'manage_' . PostTypes::BLOGGING_LIVE_POST_TYPE . '_posts_custom_column', [ $this, 'render_blogging_live_column' ], 10, 2 );
 		add_filter( 'manage_' . PostTypes::ENTRY_POST_TYPE . '_posts_columns', [ $this, 'entry_columns' ] );
@@ -42,7 +41,9 @@ final class Admin implements Feature {
 				[ $this, 'render_host_box' ],
 				$post_type,
 				'side',
-				'high'
+				'high',
+				// The block editor uses the sidebar panel in assets/js/editor.js.
+				[ '__back_compat_meta_box' => true ]
 			);
 		}
 
@@ -61,7 +62,8 @@ final class Admin implements Feature {
 			[ $this, 'render_entry_box' ],
 			PostTypes::ENTRY_POST_TYPE,
 			'side',
-			'high'
+			'high',
+			[ '__back_compat_meta_box' => true ]
 		);
 	}
 
@@ -139,9 +141,6 @@ final class Admin implements Feature {
 
 	public function render_entry_box( WP_Post $post ): void {
 		$selected_id = absint( $post->post_parent );
-		if ( ! $selected_id && isset( $_GET['blogging_live_id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$selected_id = absint( wp_unslash( $_GET['blogging_live_id'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		}
 
 		$blogging_lives = get_posts(
 			[
@@ -167,6 +166,9 @@ final class Admin implements Feature {
 				<?php endforeach; ?>
 			</select>
 		</p>
+		<?php if ( ! $selected_id ) : ?>
+			<p class="description"><?php esc_html_e( 'Choose a Blogging Live before publishing. Updates without one are saved as drafts.', 'blogging-live' ); ?></p>
+		<?php endif; ?>
 		<p>
 			<label><input type="checkbox" name="blogging_live_is_pinned" value="1" <?php checked( (bool) get_post_meta( $post->ID, '_blogging_live_is_pinned', true ) ); ?>> <?php esc_html_e( 'Pin this update', 'blogging-live' ); ?></label>
 		</p>
@@ -208,7 +210,7 @@ final class Admin implements Feature {
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Verified by can_save() above.
 		$status = sanitize_key( wp_unslash( $_POST['blogging_live_status'] ?? 'scheduled' ) );
 		$order  = sanitize_key( wp_unslash( $_POST['blogging_live_order'] ?? 'desc' ) );
-		update_post_meta( $post_id, '_blogging_live_status', in_array( $status, [ 'scheduled', 'live', 'ended' ], true ) ? $status : 'scheduled' );
+		update_post_meta( $post_id, '_blogging_live_status', array_key_exists( $status, BloggingLiveRepository::status_labels() ) ? $status : 'scheduled' );
 		update_post_meta( $post_id, '_blogging_live_order', in_array( $order, [ 'asc', 'desc' ], true ) ? $order : 'desc' );
 		update_post_meta( $post_id, '_blogging_live_refresh_interval', min( 300, absint( $_POST['blogging_live_refresh'] ?? 0 ) ) );
 		update_post_meta( $post_id, '_blogging_live_start_gmt', $this->local_input_to_utc( sanitize_text_field( wp_unslash( $_POST['blogging_live_start'] ?? '' ) ) ) );
@@ -217,23 +219,11 @@ final class Admin implements Feature {
 	}
 
 	public function save_entry( int $post_id, WP_Post $post ): void {
-		if ( $this->updating_entry_parent || ! $this->can_save( $post_id, 'blogging_live_entry_nonce', 'blogging_live_save_entry' ) ) {
+		if ( ! $this->can_save( $post_id, 'blogging_live_entry_nonce', 'blogging_live_save_entry' ) ) {
 			return;
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Verified by can_save() above.
-		$parent_id = absint( $_POST['blogging_live_parent'] ?? 0 );
-		if ( $parent_id && $this->blogging_lives->find( $parent_id ) && absint( $post->post_parent ) !== $parent_id ) {
-			$this->updating_entry_parent = true;
-			wp_update_post(
-				[
-					'ID'          => $post_id,
-					'post_parent' => $parent_id,
-				]
-			);
-			$this->updating_entry_parent = false;
-		}
-
 		update_post_meta( $post_id, '_blogging_live_is_pinned', isset( $_POST['blogging_live_is_pinned'] ) );
 		update_post_meta( $post_id, '_blogging_live_is_key_event', isset( $_POST['blogging_live_is_key_event'] ) );
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
@@ -241,6 +231,43 @@ final class Admin implements Feature {
 		if ( ! get_post_meta( $post_id, '_blogging_live_author_ids', true ) ) {
 			update_post_meta( $post_id, '_blogging_live_author_ids', [ absint( $post->post_author ) ] );
 		}
+	}
+
+	/**
+	 * Assign an entry's Blogging Live before it is saved, and keep entries without one unpublished.
+	 *
+	 * Setting the parent here rather than after the save means the publish check
+	 * below sees it, and no second wp_update_post() is needed.
+	 *
+	 * @param array<string, mixed> $data    Slashed, sanitized post data.
+	 * @param array<string, mixed> $postarr Raw post data.
+	 * @return array<string, mixed>
+	 */
+	public function entry_post_data( array $data, array $postarr ): array {
+		if ( PostTypes::ENTRY_POST_TYPE !== ( $data['post_type'] ?? '' ) ) {
+			return $data;
+		}
+
+		$requested_id = 0;
+
+		// Classic editor: the parent comes from the entry meta box.
+		if ( isset( $_POST['blogging_live_parent'], $_POST['blogging_live_entry_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['blogging_live_entry_nonce'] ) ), 'blogging_live_save_entry' ) ) {
+			$requested_id = absint( wp_unslash( $_POST['blogging_live_parent'] ) );
+		} elseif ( 'auto-draft' === $data['post_status'] && empty( $data['post_parent'] ) && isset( $_GET['blogging_live_id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only preselects the parent of the user's own new draft.
+			// A new entry opened from an "Add update" link.
+			$requested_id = absint( wp_unslash( $_GET['blogging_live_id'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+
+		if ( $requested_id && $this->blogging_lives->find( $requested_id ) && current_user_can( 'edit_post', $requested_id ) ) {
+			$data['post_parent'] = $requested_id;
+		}
+
+		if ( in_array( $data['post_status'], [ 'publish', 'future' ], true ) && ! $this->blogging_lives->find( absint( $data['post_parent'] ?? 0 ) ) ) {
+			$data['post_status'] = 'draft';
+		}
+
+		unset( $postarr );
+		return $data;
 	}
 
 	/**

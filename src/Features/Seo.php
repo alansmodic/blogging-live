@@ -46,15 +46,15 @@ final class Seo implements Feature {
 		$date_stamp = static fn( string $value ): string => $value && strtotime( $value . ' UTC' ) ? gmdate( 'c', strtotime( $value . ' UTC' ) ) : '';
 
 		foreach ( $feed['entries'] as $entry ) {
-			$data      = $this->presenter->present( $entry );
+			$data      = $this->presenter->present( $entry, false );
 			$author    = $data['authors'][0] ?? null;
 			$updates[] = array_filter(
 				[
 					'@type'         => 'BlogPosting',
 					'@id'           => $data['permalink'],
 					'url'           => $data['permalink'],
-					'headline'      => $data['title'] ? $data['title'] : wp_trim_words( wp_strip_all_tags( $data['content']['rendered'] ), 12 ),
-					'articleBody'   => wp_strip_all_tags( $data['content']['rendered'] ),
+					'headline'      => $data['title'] ? $data['title'] : wp_trim_words( $data['content']['text'], 12 ),
+					'articleBody'   => $data['content']['text'],
 					'datePublished' => $data['published_gmt'],
 					'dateModified'  => $data['modified_gmt'],
 					'author'        => $author ? [

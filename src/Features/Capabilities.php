@@ -15,6 +15,15 @@ defined( 'ABSPATH' ) || exit;
 
 final class Capabilities implements Feature {
 	/**
+	 * Bump when CAPS changes so existing sites receive the new list.
+	 */
+	public const VERSION = '1';
+
+	public const VERSION_OPTION = 'blogging_live_caps_version';
+
+	public const ROLES_OPTION = 'blogging_live_caps_roles';
+
+	/**
 	 * @var string[]
 	 */
 	private const CAPS = [
@@ -49,25 +58,43 @@ final class Capabilities implements Feature {
 	];
 
 	public function register(): void {
-		// Capabilities are installed on activation. This feature is a composition marker.
+		// Activation hooks do not run for code-loaded plugins (including on
+		// WordPress VIP) or on every site of a network, so install lazily.
+		add_action( 'init', [ self::class, 'maybe_add_roles_caps' ], 1 );
 	}
 
-	public static function add_roles_caps(): void {
-		foreach ( [ 'administrator', 'editor' ] as $role_name ) {
-			$role = get_role( $role_name );
-
-			if ( ! $role ) {
-				continue;
-			}
-
-			foreach ( self::CAPS as $capability ) {
-				$role->add_cap( $capability );
-			}
+	public static function maybe_add_roles_caps(): void {
+		if ( self::VERSION !== get_option( self::VERSION_OPTION ) || self::installed_roles() !== self::roles() ) {
+			self::add_roles_caps();
 		}
+	}
+
+	/**
+	 * Grant capabilities to the current roles and revoke them from roles that
+	 * were removed from the blogging_live_capability_roles filter since the last install.
+	 */
+	public static function add_roles_caps(): void {
+		$roles = self::roles();
+
+		self::set_caps( array_diff( self::installed_roles(), $roles ), false );
+		self::set_caps( $roles, true );
+
+		update_option( self::ROLES_OPTION, $roles );
+		update_option( self::VERSION_OPTION, self::VERSION );
 	}
 
 	public static function remove_roles_caps(): void {
-		foreach ( [ 'administrator', 'editor' ] as $role_name ) {
+		self::set_caps( array_unique( array_merge( self::roles(), self::installed_roles() ) ), false );
+
+		delete_option( self::ROLES_OPTION );
+		delete_option( self::VERSION_OPTION );
+	}
+
+	/**
+	 * @param string[] $role_names Role names.
+	 */
+	private static function set_caps( array $role_names, bool $grant ): void {
+		foreach ( $role_names as $role_name ) {
 			$role = get_role( $role_name );
 
 			if ( ! $role ) {
@@ -75,8 +102,45 @@ final class Capabilities implements Feature {
 			}
 
 			foreach ( self::CAPS as $capability ) {
-				$role->remove_cap( $capability );
+				if ( $grant ) {
+					$role->add_cap( $capability );
+				} else {
+					$role->remove_cap( $capability );
+				}
 			}
 		}
+	}
+
+	/**
+	 * Roles that received capabilities at the last install, sorted.
+	 *
+	 * @return string[]
+	 */
+	private static function installed_roles(): array {
+		$roles = get_option( self::ROLES_OPTION, [] );
+		$roles = is_array( $roles ) ? array_values( array_unique( array_map( 'strval', $roles ) ) ) : [];
+		sort( $roles );
+
+		return $roles;
+	}
+
+	/**
+	 * Roles that should hold capabilities, sorted.
+	 *
+	 * @return string[]
+	 */
+	private static function roles(): array {
+		/**
+		 * Filters the roles that receive Blogging Live capabilities.
+		 *
+		 * Changes apply on the next page load: added roles gain the capabilities
+		 * and removed roles lose them.
+		 *
+		 * @param string[] $roles Role names.
+		 */
+		$roles = array_values( array_unique( array_map( 'strval', (array) apply_filters( 'blogging_live_capability_roles', [ 'administrator', 'editor' ] ) ) ) );
+		sort( $roles );
+
+		return $roles;
 	}
 }

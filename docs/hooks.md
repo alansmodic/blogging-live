@@ -38,6 +38,21 @@ Use this for a CDN or full-page-cache purge. The base plugin does not depend on 
 
 ## Data filters
 
+### `blogging_live_capability_roles`
+
+Filters the roles that receive Blogging Live capabilities. Changes apply on the next page load of each site: roles added to the list gain the capabilities and roles removed from it lose them.
+
+```php
+add_filter(
+	'blogging_live_capability_roles',
+	static fn( array $roles ): array => [ 'administrator', 'editor', 'author' ]
+);
+```
+
+### `blogging_live_pinned_limit`
+
+Filters how many pinned entries appear above the feed (default 3, maximum 10). Return `0` to hide the pinned section.
+
 ### `blogging_live_host_post_types`
 
 Filters public post types that can host a Blogging Live.
@@ -51,7 +66,7 @@ add_filter(
 
 ### `blogging_live_entry_data`
 
-Filters the normalized entry representation used by REST, templates, and schema.
+Filters the normalized entry representation used by REST, templates, and schema. `content.rendered` holds the rendered HTML. For structured data, the plugin skips `the_content`, so `content.rendered` is empty and `content.text` holds plain text instead.
 
 ```php
 add_filter(
@@ -67,7 +82,7 @@ add_filter(
 
 ### `blogging_live_touch_host_post`
 
-Controls whether saving a published entry updates the host post's `post_modified` value.
+Controls whether a published entry change updates the host post's `post_modified` value. The plugin updates the column directly and calls `clean_post_cache()`; it does not re-save the host, so `save_post` does not fire for the host.
 
 ```php
 add_filter( 'blogging_live_touch_host_post', '__return_false' );
@@ -87,4 +102,10 @@ Filters the complete `LiveBlogPosting` array. Return an empty array to suppress 
 
 ## Template integration
 
-Ads, related links, or other site-specific components can usually be inserted cleanly by overriding `blogging-live/entry.php` in the theme. For behavior that should travel with a separate plugin, filter `blogging_live_html` or attach a browser listener to `blogging-live:entries-added`.
+Ads, related links, or other site-specific components can usually be inserted cleanly by overriding `blogging-live/entry.php` in the theme. For behavior that should travel with a separate plugin, filter `blogging_live_html` or attach browser listeners to the container's events:
+
+- `blogging-live:entries-added` — `detail.ids` of entries added to the feed;
+- `blogging-live:entries-updated` — `detail.ids` of entries replaced after an edit;
+- `blogging-live:entries-removed` — `detail.ids` of entries removed after being unpublished, moved, or deleted;
+- `blogging-live:status-changed` — `detail.status` is the new event status;
+- `blogging-live:error` — `detail` is the request error.
